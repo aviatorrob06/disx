@@ -30,6 +30,7 @@ public class DisxModInfo {
     private static final String PATREON_URL = "https://www.patreon.com/c/ar06";
     private static final String LATEST_VERSION_URL = "https://raw.githubusercontent.com/AviatorRob/disx/master/LATEST_VERSION.json";
     private static final String FORCE_SETTINGS_URL = "https://raw.githubusercontent.com/AviatorRob/disx/refs/heads/master/FORCE_SETTINGS.json";
+    private static final String DEFAULT_WWW2PCM_URL = "https://www2pcm.ar06.xyz/";
 
     //MOD CONFLICT INFO
     private static final String[] potentialModConflicts = {"carryon"};
@@ -47,6 +48,10 @@ public class DisxModInfo {
     private static int versionsOutdated = 0;
 
     private static int AUDIO_RADIUS = 25;
+
+    private static String www2pcmURL = DEFAULT_WWW2PCM_URL;
+    private static boolean directUrlEnabled = false;
+    private static int CACHE_MAX_SIZE = 5;
 
     public static void pullLatestVersion(){
         try {
@@ -235,5 +240,32 @@ public class DisxModInfo {
 
     public static boolean getSoundParticles(){
         return SOUND_PARTICLES;
+    }
+
+    public static void setWww2pcmURL(String www2pcmURL) {
+        if (www2pcmURL.equals("default")){
+            www2pcmURL = DEFAULT_WWW2PCM_URL;
+        }
+        DisxModInfo.www2pcmURL = www2pcmURL;
+    }
+
+    public static String getWww2pcmURL() {
+        return www2pcmURL;
+    }
+
+    public static void setDirectUrlEnabled(boolean directUrlEnabled) {
+        DisxModInfo.directUrlEnabled = directUrlEnabled;
+    }
+
+    public static boolean isDirectUrlEnabled() {
+        return directUrlEnabled;
+    }
+
+    public static void setCacheMaxSize(int cacheMaxSize) {
+        CACHE_MAX_SIZE = cacheMaxSize;
+    }
+
+    public static int getCacheMaxSize() {
+        return CACHE_MAX_SIZE;
     }
 }

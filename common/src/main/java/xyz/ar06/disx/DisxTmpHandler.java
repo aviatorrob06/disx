@@ -66,6 +66,7 @@ public class DisxTmpHandler {
     }
 
     private static void cleanCache(long cacheSize){
+        long MAX_CACHE_SIZE = ((long)DisxModInfo.getCacheMaxSize()) * 1024 * 1024 * 1024;
         File[] files = new File(TMP_CACHE_PATH).listFiles();
 
         Arrays.sort(files,
@@ -79,6 +80,7 @@ public class DisxTmpHandler {
     }
 
     private static void cleanProcessedCache(long cacheSize){
+        long MAX_CACHE_SIZE = ((long)DisxModInfo.getCacheMaxSize()) * 1024 * 1024 * 1024;
         File[] files = new File(TMP_PROCESSED_CACHE_PATH).listFiles();
 
         Arrays.sort(files,
@@ -132,9 +134,9 @@ public class DisxTmpHandler {
         }
     }
 
-    private static long MAX_CACHE_SIZE = 5L * 1024 * 1024 * 1024;
     public static void cacheMaxCapacityHandler(MinecraftServer minecraftServer) {
         try {
+            long MAX_CACHE_SIZE = ((long)DisxModInfo.getCacheMaxSize()) * 1024 * 1024 * 1024;
             long totalBytes;
             if (new File(TMP_CACHE_PATH).exists()){
                 Stream<Path> files = Files.list(Path.of(TMP_CACHE_PATH));

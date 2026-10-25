@@ -16,6 +16,9 @@ public class DisxPropertyTypeSuggestionProvider {
         suggestionsBuilder.suggest("debug_mode");
         suggestionsBuilder.suggest("audio_radius");
         suggestionsBuilder.suggest("sound_particles");
+        suggestionsBuilder.suggest("www2pcm_target");
+        suggestionsBuilder.suggest("direct_url_enabled");
+        suggestionsBuilder.suggest("cache_files_max_size");
         //suggestionsBuilder.suggest("refresh_token");
         //suggestionsBuilder.suggest("age_restricted_playback");
         return suggestionsBuilder.buildFuture();

@@ -104,7 +104,7 @@ public class DisxStampMakerGUI extends Screen {
         );
         graphics.drawString(
                 Minecraft.getInstance().font,
-                Component.literal("Enter Video Id").withStyle(ChatFormatting.WHITE),
+                Component.literal("Enter Media URL").withStyle(ChatFormatting.WHITE),
                 ((graphics.guiWidth() - 257) / 2) + 8,
                 ((graphics.guiHeight() - 39) / 2) + 3,
                 3

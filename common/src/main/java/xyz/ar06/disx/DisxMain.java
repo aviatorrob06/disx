@@ -34,6 +34,7 @@ import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
+import xyz.ar06.disx.utils.DisxWWW2PCMReference;
 
 import java.util.function.Supplier;
 
@@ -163,5 +164,9 @@ public class DisxMain {
         }
 
         DisxLogger.info("Success in Mod Launch (SERVER)");
+
+        DisxWWW2PCMReference ref = new DisxWWW2PCMReference("https://open.spotify.com/track/0pDCVNozy0RLEfQpJ6bPYJ?si=ff74276e98164ebb");
+        DisxLogger.debug(ref.getIdentifier() + ", " + ref.getService() + ", " + ref.probeTitle() + ", " + ref.probeDuration());
+        ref.resolveAudioFile();
     }
 }

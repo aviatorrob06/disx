@@ -75,6 +75,10 @@ public class DisxConfigHandler {
             //DisxModInfo.setRefreshToken(properties.getProperty("refresh_token"));
             DisxModInfo.setAudioRadius(Integer.parseInt(properties.getProperty("audio_radius")));
             DisxModInfo.setSoundParticles(Boolean.parseBoolean(properties.getProperty("sound_particles")));
+            DisxModInfo.setWww2pcmURL(String.valueOf(properties.getProperty("www2pcm_target")));
+            DisxModInfo.setDirectUrlEnabled(Boolean.parseBoolean(properties.getProperty("direct_url_enabled")));
+            DisxModInfo.setCacheMaxSize(Integer.parseInt(properties.getProperty("cache_files_max_size")));
+
             //JSON Check/Create/Initialization
             //Player Use Whitelist JSON
             File dir2 = new File(useWhitelistJsonPath);
@@ -187,6 +191,12 @@ public class DisxConfigHandler {
                 }
                 updateProperty("config_version", "4");
             }
+            if (config_version < 5){
+                updateProperty("www2pcm_target", "default");
+                updateProperty("direct_url_enabled", "false");
+                updateProperty("cache_files_max_size","5");
+                updateProperty("config_version", "5");
+            }
         }
 
         public static String getProperty(String key){
@@ -200,6 +210,9 @@ public class DisxConfigHandler {
             //DisxModInfo.setRefreshToken(properties.getProperty("refresh_token", ""));
             DisxModInfo.setSoundParticles(Boolean.parseBoolean(properties.getProperty("sound_particles", "true")));
             DisxModInfo.setAudioRadius(Integer.parseInt(properties.getProperty("audio_radius", "25")));
+            DisxModInfo.setWww2pcmURL(String.valueOf(properties.getProperty("www2pcm_target")));
+            DisxModInfo.setDirectUrlEnabled(Boolean.parseBoolean(properties.getProperty("direct_url_enabled")));
+            DisxModInfo.setCacheMaxSize(Integer.parseInt(properties.getProperty("cache_files_max_size")));
             DisxServerPacketIndex.ServerPackets.serverConfigSendAll();
             updateConfigFile();
         }
