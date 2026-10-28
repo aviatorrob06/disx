@@ -11,7 +11,7 @@ public final class DisxAudioFormatConstants {
     public static final int channelCount = 2;
     public static final int frameSize = (bitDepth / 8) * channelCount;
     public static final int sampleRate = 48000;
-    public static final double streamInterval = 5;
+    public static final double streamInterval = 1;
     public static final int chunkSize = (int) (sampleRate * frameSize * streamInterval); //(calculates to 882000)
     public static final AudioFormat format = new AudioFormat(
             sampleRate,

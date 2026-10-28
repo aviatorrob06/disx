@@ -131,6 +131,7 @@ public class DisxAudioInstanceRegistry {
     }
 
     public static void routeAudioData(ByteBuf buf, BlockPos blockPos, ResourceLocation dimension, UUID entityUuid, DisxAudioMotionType motionType){
+        DisxLogger.debug("Trying to route audio data");
         if (!buf.isReadable()){
             DisxLogger.error(new DisxMalformedAudioPacketException("No readable data detected in packet buffer!"));
             return;

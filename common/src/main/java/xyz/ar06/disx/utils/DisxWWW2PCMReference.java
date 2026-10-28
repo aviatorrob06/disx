@@ -40,11 +40,11 @@ public class DisxWWW2PCMReference {
     private JSONObject cachedMetadata;
 
     private static final AtomicInteger threadCounter = new AtomicInteger(1);
-    private final ExecutorService www2PCMExecutor =
+    private static final ExecutorService www2PCMExecutor =
             Executors.newFixedThreadPool(2, runnable -> {
                 Thread thread = new Thread(
                         runnable,
-                        "WWW2PCM/Thread-" + threadCounter.getAndIncrement()
+                        "WWW2PCM Thread-" + threadCounter.getAndIncrement()
                 );
 
                 thread.setDaemon(true);

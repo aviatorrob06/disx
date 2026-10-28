@@ -16,12 +16,12 @@ public class DisxServerAudioRegistry {
     public static LinkedList<DisxAudioStreamingNode> registry = new LinkedList<>();
 
     //Default variant
-    public static void addToRegistry(BlockPos pos, String videoId, Player player, ResourceKey<Level> dimension, boolean loop, DisxAudioMotionType motionType, UUID entityUuid, int rogueRadius, ArrayList<DisxAudioFilterType> audioFilters){
+    public static void addToRegistry(BlockPos pos, String mediaUrl, Player player, MinecraftServer minecraftServer, ResourceKey<Level> dimension, boolean loop, DisxAudioMotionType motionType, UUID entityUuid, int rogueRadius, ArrayList<DisxAudioFilterType> audioFilters){
         ResourceLocation dimensionLocation = dimension.location();
         if (player != null){
-            DisxSystemMessages.playingAtLocation(player.getServer(), player.getName().getString(), pos, videoId, dimensionLocation);
+            DisxSystemMessages.playingAtLocation(minecraftServer, player.getName().getString(), pos, mediaUrl, dimensionLocation);
         }
-        registry.add(new DisxAudioStreamingNode(videoId, pos, dimensionLocation, player, loop, 0, motionType, entityUuid, rogueRadius, audioFilters));
+        registry.add(new DisxAudioStreamingNode(mediaUrl, pos, minecraftServer, dimensionLocation, player, loop, 0, motionType, entityUuid, rogueRadius, audioFilters));
         if (player == null){
             players.forEach(plr -> {
                 DisxServerPacketIndex.ServerPackets.AudioRegistrySyncPackets.add(plr, pos, dimensionLocation, new UUID(0L, 0L), loop, 100, motionType, entityUuid, rogueRadius);
@@ -35,14 +35,14 @@ public class DisxServerAudioRegistry {
     }
 
     //Variant for Sound Command - Takes server, dimension as resourcelocation, and start time
-    public static void addToRegistry(BlockPos pos, String videoId, Player player, MinecraftServer server, ResourceLocation dimension, int startTime, boolean loop, int volume, int rogueRadius, ArrayList<DisxAudioFilterType> audioFilters){
+    public static void addToRegistry(BlockPos pos, String mediaUrl, Player player, MinecraftServer server, ResourceLocation dimension, int startTime, boolean loop, int volume, int rogueRadius, ArrayList<DisxAudioFilterType> audioFilters){
         ResourceLocation dimensionLocation = dimension;
         if (player != null){
-            DisxSystemMessages.playingAtLocation(server, player.getName().getString(), pos, videoId, dimensionLocation);
-            registry.add(new DisxAudioStreamingNode(videoId, pos, dimensionLocation, player, loop, startTime, DisxAudioMotionType.STATIC, new UUID(0L, 0L), rogueRadius, audioFilters));
+            DisxSystemMessages.playingAtLocation(server, player.getName().getString(), pos, mediaUrl, dimensionLocation);
+            registry.add(new DisxAudioStreamingNode(mediaUrl, pos, server, dimensionLocation, player, loop, startTime, DisxAudioMotionType.STATIC, new UUID(0L, 0L), rogueRadius, audioFilters));
         } else {
-            DisxSystemMessages.playingAtLocation(server, "Server", pos, videoId, dimensionLocation);
-            registry.add(new DisxAudioStreamingNode(videoId, pos, dimensionLocation, null, loop, startTime, DisxAudioMotionType.STATIC, new UUID(0L, 0L), rogueRadius, audioFilters));
+            DisxSystemMessages.playingAtLocation(server, "Server", pos, mediaUrl, dimensionLocation);
+            registry.add(new DisxAudioStreamingNode(mediaUrl, pos, server, dimensionLocation, null, loop, startTime, DisxAudioMotionType.STATIC, new UUID(0L, 0L), rogueRadius, audioFilters));
         }
 
         if (player == null){

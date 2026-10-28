@@ -21,8 +21,25 @@ import java.util.ConcurrentModificationException;
 import java.util.LinkedList;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class DisxAudioInstance {
+    private static final AtomicInteger threadCounter = new AtomicInteger(1);
+    private static final ExecutorService audioWriteExecutor =
+            Executors.newCachedThreadPool(runnable -> {
+                Thread thread = new Thread(
+                        runnable,
+                        "Disx Audio-Playback Thread-" + threadCounter.getAndIncrement()
+                );
+
+                thread.setDaemon(true);
+                return thread;
+            });
+
+
     private BlockPos blockPos;
     private ResourceLocation dimension;
     private UUID instanceOwner;
@@ -135,9 +152,10 @@ public class DisxAudioInstance {
     }
 
     private boolean writingToLine = false;
-    private LinkedList<byte[]> audioDataPacketQueue = new LinkedList<>();
+    private LinkedBlockingQueue<byte[]> audioDataPacketQueue = new LinkedBlockingQueue<>();
 
     public void addToPacketDataQueue(byte[] data){
+        DisxLogger.debug("Something added to audio data queue");
         this.audioDataPacketQueue.add(data);
     }
 
@@ -173,7 +191,7 @@ public class DisxAudioInstance {
                 DisxLogger.debug("Enqueued audio data written to line");
                 writingToLine = false;
             }
-        });
+        }, audioWriteExecutor);
     }
 
     private void destroyLine(){

@@ -21,7 +21,7 @@ public class DisxTempoFilter implements DisxAudioFilter{
     public byte[] process(byte[] audio) {
         int channels = 2;
         ShortBuffer shortBuffer = ByteBuffer.wrap(audio)
-                .order(ByteOrder.BIG_ENDIAN)
+                .order(ByteOrder.LITTLE_ENDIAN)
                 .asShortBuffer();
 
         short[] samples = new short[shortBuffer.remaining()];
@@ -52,7 +52,7 @@ public class DisxTempoFilter implements DisxAudioFilter{
 
         // Convert short[] -> byte[]
         ByteBuffer out = ByteBuffer.allocate(output.length * 2)
-                .order(ByteOrder.BIG_ENDIAN);
+                .order(ByteOrder.LITTLE_ENDIAN);
 
         for (short sample : output) {
             out.putShort(sample);

@@ -1,5 +1,6 @@
 package xyz.ar06.disx.items;
 
+import dev.architectury.registry.CreativeTabRegistry;
 import dev.architectury.registry.registries.Registrar;
 import dev.architectury.registry.registries.RegistrySupplier;
 import net.minecraft.core.BlockPos;
@@ -15,6 +16,7 @@ import net.minecraft.world.level.block.BaseRailBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.RailShape;
 import net.minecraft.world.level.gameevent.GameEvent;
+import xyz.ar06.disx.DisxCreativeModeTabAssembly;
 import xyz.ar06.disx.entities.vehicle.DisxAdvancedJukeboxMinecart;
 
 public class DisxAdvancedJukeboxMinecartItem extends Item {
@@ -52,10 +54,17 @@ public class DisxAdvancedJukeboxMinecartItem extends Item {
         }
     }
 
-    public static void registerItem(Registrar<Item> registrar, RegistrySupplier<CreativeModeTab> tab){
+    public static void registerItem(Registrar<Item> registrar){
         itemRegistration = registrar.register(
                 new ResourceLocation("disx", "advanced_jukebox_minecart"),
-                () -> new DisxAdvancedJukeboxMinecartItem(new Item.Properties().stacksTo(1).arch$tab(tab))
+                () -> new DisxAdvancedJukeboxMinecartItem(new Item.Properties().stacksTo(1))
+        );
+    }
+
+    public static void registerTabItem(){
+        CreativeTabRegistry.appendBuiltinStack(
+                DisxCreativeModeTabAssembly.CREATIVE_MODE_TAB.get(),
+                new ItemStack(itemRegistration.get())
         );
     }
 }

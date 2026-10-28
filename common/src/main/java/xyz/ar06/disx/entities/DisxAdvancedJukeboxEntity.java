@@ -122,7 +122,7 @@ public class DisxAdvancedJukeboxEntity extends BlockEntity implements ContainerS
                 };
             }
 
-            DisxServerAudioRegistry.addToRegistry(this.getBlockPos(), mediaUrl, null, level.dimension(), loop, DisxAudioMotionType.STATIC, new UUID(0L, 0L), rogueRadius, audioFilters);
+            DisxServerAudioRegistry.addToRegistry(this.getBlockPos(), mediaUrl, null, level.getServer(), level.dimension(), loop, DisxAudioMotionType.STATIC, new UUID(0L, 0L), rogueRadius, audioFilters);
         } else {
             itemInventory.set(i, itemStack);
         }
@@ -149,7 +149,7 @@ public class DisxAdvancedJukeboxEntity extends BlockEntity implements ContainerS
             ArrayList<DisxAudioFilterType> audioFilters = DisxDiscEnchantmentHelper.buildAudioFilterArray(itemStack);
             int rogueRadius = -1;
 
-            DisxServerAudioRegistry.addToRegistry(this.getBlockPos(), mediaUrl, player, level.dimension(), loop, DisxAudioMotionType.STATIC, new UUID(0L, 0L), rogueRadius, audioFilters);
+            DisxServerAudioRegistry.addToRegistry(this.getBlockPos(), mediaUrl, player, level.getServer(), level.dimension(), loop, DisxAudioMotionType.STATIC, new UUID(0L, 0L), rogueRadius, audioFilters);
         } else {
             itemInventory.set(i, itemStack);
         }

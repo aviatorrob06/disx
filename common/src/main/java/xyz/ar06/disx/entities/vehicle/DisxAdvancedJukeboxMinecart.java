@@ -64,7 +64,7 @@ public class DisxAdvancedJukeboxMinecart extends Minecart implements ContainerEn
         if (interactionHand.equals(InteractionHand.MAIN_HAND) && !player.level().isClientSide()){
             ItemStack handStack = player.getMainHandItem();
             CompoundTag tag = handStack.getTag();
-            if (handStack.getItem() instanceof DisxCustomDisc && tag.contains("mediaUrl")){
+            if (handStack.getItem() instanceof DisxCustomDisc ){
                 if (!isHas_Record()){
                     DisxLogger.debug("Does not have record, taking and putting in");
                     String discName = tag.getString("discName");
@@ -82,6 +82,9 @@ public class DisxAdvancedJukeboxMinecart extends Minecart implements ContainerEn
                         tag.putString("mediaUrl", videoId);
                         tag.remove("videoId");
                         handStack.setTag(tag);
+                    }
+                    if (!tag.contains("mediaUrl")){
+                        return InteractionResult.FAIL;
                     }
                     String mediaUrl = tag.getString("mediaUrl");
                     DisxWWW2PCMReference www2PCMReference = new DisxWWW2PCMReference(mediaUrl);
@@ -221,7 +224,7 @@ public class DisxAdvancedJukeboxMinecart extends Minecart implements ContainerEn
     public void setItem(int i, ItemStack itemStack) {
         items.set(i, itemStack);
         CompoundTag tag = itemStack.getTag();
-        if (itemStack.getItem() instanceof DisxCustomDisc && tag.contains("mediaUrl")){
+        if (itemStack.getItem() instanceof DisxCustomDisc){
             //legacy YT-Only source compatibility
             if (tag.contains("videoId")){
                 String videoId = tag.getString("videoId");
@@ -235,7 +238,7 @@ public class DisxAdvancedJukeboxMinecart extends Minecart implements ContainerEn
             String mediaUrl = tag.getString("mediaUrl");
             if (!mediaUrl.isEmpty()){
                 DisxLogger.debug("Calling add to registry (LIVE)");
-                DisxServerAudioRegistry.addToRegistry(this.getOnPos(), mediaUrl, null, this.level().dimension(), false, DisxAudioMotionType.LIVE, this.getUUID(), -1, new ArrayList<DisxAudioFilterType>());
+                DisxServerAudioRegistry.addToRegistry(this.getOnPos(), mediaUrl, null, this.level().getServer(),this.level().dimension(), false, DisxAudioMotionType.LIVE, this.getUUID(), -1, new ArrayList<DisxAudioFilterType>());
             }
         }
 
@@ -245,7 +248,7 @@ public class DisxAdvancedJukeboxMinecart extends Minecart implements ContainerEn
     public void setItem(int i, ItemStack itemStack, Player player) {
         items.set(i, itemStack);
         CompoundTag tag = itemStack.getTag();
-        if (itemStack.getItem() instanceof DisxCustomDisc && tag.contains("mediaUrl")){
+        if (itemStack.getItem() instanceof DisxCustomDisc){
             //legacy YT-Only source compatibility
             if (tag.contains("videoId")){
                 String videoId = tag.getString("videoId");
@@ -256,10 +259,13 @@ public class DisxAdvancedJukeboxMinecart extends Minecart implements ContainerEn
                 tag.remove("videoId");
                 itemStack.setTag(tag);
             }
+            if (!tag.contains("mediaUrl")){
+                return;
+            }
             String mediaUrl = tag.getString("mediaUrl");
             if (!mediaUrl.isEmpty()){
                 DisxLogger.debug("Calling add to registry (LIVE)");
-                DisxServerAudioRegistry.addToRegistry(this.getOnPos(), mediaUrl, player, this.level().dimension(), false, DisxAudioMotionType.LIVE, this.getUUID(), -1, new ArrayList<DisxAudioFilterType>());
+                DisxServerAudioRegistry.addToRegistry(this.getOnPos(), mediaUrl, player, this.level().getServer(),this.level().dimension(), false, DisxAudioMotionType.LIVE, this.getUUID(), -1, new ArrayList<DisxAudioFilterType>());
             }
         }
         this.setChanged();
@@ -407,7 +413,7 @@ public class DisxAdvancedJukeboxMinecart extends Minecart implements ContainerEn
     @Override
     public boolean canTakeItem(Container container, int i, ItemStack itemStack) {
         if (i == 0){
-            if (itemStack.getItem() instanceof DisxCustomDisc && itemStack.getTag().contains("mediaUrl")) {
+            if (itemStack.getItem() instanceof DisxCustomDisc && (itemStack.getTag().contains("mediaUrl") || itemStack.getTag().contains("videoId"))) {
                 if (!DisxServerAudioRegistry.isNodeOnEntity(this.getUUID())){
                     return true;
                 }

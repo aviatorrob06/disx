@@ -3,10 +3,15 @@ package xyz.ar06.disx;
 
 import com.google.common.io.Files;
 import io.netty.buffer.Unpooled;
+import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.Vec3;
 import xyz.ar06.disx.audio_filters.*;
 import xyz.ar06.disx.exceptions.DisxAudioStreamingNodeException;
 import xyz.ar06.disx.exceptions.DisxMalformedURLException;
@@ -23,16 +28,32 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static xyz.ar06.disx.DisxAudioFormatConstants.*;
 
 public class DisxAudioStreamingNode {
+    private static final AtomicInteger threadCounter = new AtomicInteger(1);
+    private static final ExecutorService audioSendExecutor =
+            Executors.newCachedThreadPool(runnable -> {
+                Thread thread = new Thread(
+                        runnable,
+                        "Disx Audio-Send Thread-" + threadCounter.getAndIncrement()
+                );
+
+                thread.setDaemon(true);
+                return thread;
+            });
+
     //@Deprecated private AudioPlayer audioPlayer = new DefaultAudioPlayer(playerManager);
     //private AudioInputStream inputStream = AudioPlayerInputStream.createStream(audioPlayer, LPformat, 20000, true);;
     private AudioInputStream inputStream;// = AudioPlayerInputStream.createStream(audioPlayer, LPformat, 20000, true);;
     private File audioFile;
 
     private BlockPos blockPos;
+    private MinecraftServer minecraftServer;
     private ResourceLocation dimension;
     private Player nodeOwner;
     private boolean loop;
@@ -50,10 +71,11 @@ public class DisxAudioStreamingNode {
     private ArrayList<DisxAudioFilterType> activeFilters;
 
 
-    public DisxAudioStreamingNode(String mediaUrl, BlockPos blockPos, ResourceLocation dimension, Player nodeOwner, boolean loop, int startTime, DisxAudioMotionType motionType, UUID entityUuid, int rogueRadius, ArrayList<DisxAudioFilterType> audioFilters){
+    public DisxAudioStreamingNode(String mediaUrl, BlockPos blockPos, MinecraftServer minecraftServer, ResourceLocation dimension, Player nodeOwner, boolean loop, int startTime, DisxAudioMotionType motionType, UUID entityUuid, int rogueRadius, ArrayList<DisxAudioFilterType> audioFilters){
         DisxLogger.debug("New Audio Streaming Node called for; setting details (MOTION TYPE: " + motionType.name() + "); Running Async!");
         this.mediaUrl = mediaUrl;
         this.blockPos = blockPos;
+        this.minecraftServer = minecraftServer;
         this.dimension = dimension;
         this.nodeOwner = nodeOwner;
         this.loop = loop;
@@ -138,12 +160,11 @@ public class DisxAudioStreamingNode {
             }
 
 
-        });
+        }, audioSendExecutor);
 
     }
 
     private void streamAudioData() {
-        CompletableFuture.runAsync(() -> {
             try {
                 byte[] buffer = new byte[chunkSize];
                 DisxServerPacketIndex.ServerPackets.playingAudioMessage(DisxAudioStreamingNode.this.www2PCMReference.getIdentifier(), DisxAudioStreamingNode.this.nodeOwner);
@@ -156,13 +177,53 @@ public class DisxAudioStreamingNode {
                     bytesRead = inputStream.read(buffer);
                     if (bytesRead != 0 && bytesRead != -1){
                         for (Player p : DisxServerAudioRegistry.getMcPlayers()) {
-                            FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
-                            buf.writeBlockPos(this.blockPos);
-                            buf.writeResourceLocation(this.dimension);
-                            buf.writeUtf(this.motionType.name());
-                            buf.writeUUID(this.entityUuid);
-                            buf.writeBytes(buffer, 0, bytesRead);
-                            DisxServerPacketIndex.ServerPackets.audioData(p, buf);
+                            if (this.motionType.equals(DisxAudioMotionType.STATIC)){
+                                Vec3 plrPos = p.getEyePosition();
+                                Vec3 blockPosVec = new Vec3(blockPos.getX() + 0.5, blockPos.getY() + 0.5, blockPos.getZ() + 0.5);
+                                double distance = plrPos.distanceTo(blockPosVec);
+                                double maxPacketDistance = (double) (DisxModInfo.getAudioRadius() + 10);
+                                if (distance <= maxPacketDistance){
+                                    FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
+                                    buf.writeBlockPos(this.blockPos);
+                                    buf.writeResourceLocation(this.dimension);
+                                    buf.writeUtf(this.motionType.name());
+                                    buf.writeUUID(this.entityUuid);
+                                    buf.writeBytes(buffer, 0, bytesRead);
+                                    DisxServerPacketIndex.ServerPackets.audioData(p, buf);
+                                }
+                            } else {
+                                Vec3 plrPos = p.getEyePosition();
+                                Vec3 entityPos = null;
+                                for (ServerLevel level : minecraftServer.getAllLevels()){
+                                    Entity entity = level.getEntity(this.entityUuid);
+                                    if (entity != null){
+                                        entityPos = entity.getPosition(1F);
+                                    }
+                                }
+                                if (entityPos != null){
+                                    double distance = plrPos.distanceTo(entityPos);
+                                    double maxPacketDistance = (double) (DisxModInfo.getAudioRadius() + 10);
+                                    if (distance <= maxPacketDistance) {
+                                        FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
+                                        buf.writeBlockPos(this.blockPos);
+                                        buf.writeResourceLocation(this.dimension);
+                                        buf.writeUtf(this.motionType.name());
+                                        buf.writeUUID(this.entityUuid);
+                                        buf.writeBytes(buffer, 0, bytesRead);
+                                        DisxServerPacketIndex.ServerPackets.audioData(p, buf);
+                                    }
+                                } else {
+                                    FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
+                                    buf.writeBlockPos(this.blockPos);
+                                    buf.writeResourceLocation(this.dimension);
+                                    buf.writeUtf(this.motionType.name());
+                                    buf.writeUUID(this.entityUuid);
+                                    buf.writeBytes(buffer, 0, bytesRead);
+                                    DisxServerPacketIndex.ServerPackets.audioData(p, buf);
+                                }
+
+                            }
+
                         }
                         Thread.sleep((long) (streamInterval * 1000L));
                     } else {
@@ -196,7 +257,6 @@ public class DisxAudioStreamingNode {
             } catch (Exception e) {
                 DisxLogger.error(e);
             }
-        });
     }
 
     public void setDimension(ResourceLocation dimension) {

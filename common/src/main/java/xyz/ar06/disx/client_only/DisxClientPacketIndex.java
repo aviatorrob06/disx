@@ -18,6 +18,9 @@ import org.slf4j.LoggerFactory;
 
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Environment(EnvType.CLIENT)
 public class DisxClientPacketIndex  {
@@ -121,24 +124,44 @@ public class DisxClientPacketIndex  {
             }
         }
 
+        private static final AtomicInteger threadCounter = new AtomicInteger(1);
+        private static final ExecutorService audioReadExecutor =
+                Executors.newCachedThreadPool(runnable -> {
+                    Thread thread = new Thread(
+                            runnable,
+                            "Disx Audio-Read Thread-" + threadCounter.getAndIncrement()
+                    );
+
+                    thread.setDaemon(true);
+                    return thread;
+                });
+
         public static void receiveAudioData(FriendlyByteBuf buf, NetworkManager.PacketContext context){
-            DisxLogger.debug("audio data packet received");
-            if (!buf.isReadable()){
-                DisxLogger.error("No readable data found in received audio data packet!");
-                return;
-            }
-            BlockPos blockPos = buf.readBlockPos();
-            ResourceLocation dimension = buf.readResourceLocation();
-            String motionTypeUtf = buf.readUtf();
-            DisxAudioMotionType motionType;
-            if (!motionTypeUtf.isEmpty()){
-                motionType = DisxAudioMotionType.valueOf(motionTypeUtf);
-            } else {
-                motionType = DisxAudioMotionType.STATIC;
-            }
-            UUID entityUuid = buf.readUUID();
-            ByteBuf bufCopy = buf.copy();
-            CompletableFuture.runAsync(() -> DisxAudioInstanceRegistry.routeAudioData(bufCopy, blockPos, dimension, entityUuid, motionType));
+            int length = buf.readableBytes();
+            byte[] packet = new byte[length];
+            buf.readBytes(packet);
+            CompletableFuture.runAsync(() -> {
+                DisxLogger.debug("audio data packet received");
+                FriendlyByteBuf friendlyPacket = new FriendlyByteBuf(
+                        Unpooled.wrappedBuffer(packet)
+                );
+                if (!friendlyPacket.isReadable()){
+                    DisxLogger.error("No readable data found in received audio data packet!");
+                    return;
+                }
+                BlockPos blockPos = friendlyPacket.readBlockPos();
+                ResourceLocation dimension = friendlyPacket.readResourceLocation();
+                String motionTypeUtf = friendlyPacket.readUtf();
+                DisxAudioMotionType motionType;
+                if (!motionTypeUtf.isEmpty()){
+                    motionType = DisxAudioMotionType.valueOf(motionTypeUtf);
+                } else {
+                    motionType = DisxAudioMotionType.STATIC;
+                }
+                UUID entityUuid = friendlyPacket.readUUID();
+                //ByteBuf bufCopy = buf.copy();
+                DisxAudioInstanceRegistry.routeAudioData(friendlyPacket, blockPos, dimension, entityUuid, motionType);
+            }, audioReadExecutor);
         }
 
         public static void receiveLoopMsg(FriendlyByteBuf buf, NetworkManager.PacketContext context){

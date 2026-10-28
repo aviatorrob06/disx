@@ -1,8 +1,10 @@
 package xyz.ar06.disx.blocks;
 
+import dev.architectury.registry.CreativeTabRegistry;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.util.RandomSource;
+import xyz.ar06.disx.DisxCreativeModeTabAssembly;
 import xyz.ar06.disx.DisxLogger;
 import xyz.ar06.disx.DisxServerPacketIndex;
 import xyz.ar06.disx.entities.DisxStampMakerEntity;
@@ -261,10 +263,17 @@ public class DisxStampMaker extends BaseEntityBlock {
         blockRegistration = blockRegistrar.register(new ResourceLocation("disx", "stamp_maker"), () -> new DisxStampMaker(BlockBehaviour.Properties.copy(Blocks.PISTON)));
     }
 
-    public static void registerBlockItem(Registrar<Item> itemRegistrar, RegistrySupplier<CreativeModeTab> tab){
+    public static void registerBlockItem(Registrar<Item> itemRegistrar){
         itemRegistration = itemRegistrar.register(
                 (new ResourceLocation("disx", "stamp_maker")),
-                () -> new BlockItem(blockRegistration.get(), new Item.Properties().arch$tab(tab)));
+                () -> new BlockItem(blockRegistration.get(), new Item.Properties()));
+    }
+
+    public static void registerTabItem(){
+        CreativeTabRegistry.appendBuiltinStack(
+                DisxCreativeModeTabAssembly.CREATIVE_MODE_TAB.get(),
+                new ItemStack(itemRegistration.get())
+        );
     }
 
     public static void registerBlockEntity(Registrar<BlockEntityType<?>> blockEntityRegistrar){

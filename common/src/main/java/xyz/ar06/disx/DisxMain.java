@@ -1,5 +1,6 @@
 package xyz.ar06.disx;
 
+import dev.architectury.event.events.client.ClientLifecycleEvent;
 import dev.architectury.event.events.common.*;
 import dev.architectury.utils.Env;
 import net.minecraft.sounds.SoundEvent;
@@ -34,7 +35,6 @@ import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
-import xyz.ar06.disx.utils.DisxWWW2PCMReference;
 
 import java.util.function.Supplier;
 
@@ -55,7 +55,7 @@ public class DisxMain {
         Registrar<EntityType<?>> entityTypeRegistrar = REGISTRAR_MANAGER.get().get(Registries.ENTITY_TYPE);
         Registrar<Enchantment> enchantmentRegistrar = REGISTRAR_MANAGER.get().get(Registries.ENCHANTMENT);
         //Creative Mode Tab Registration
-        RegistrySupplier<CreativeModeTab> creativeModeTab = tabRegistrar.register(
+        DisxCreativeModeTabAssembly.CREATIVE_MODE_TAB = tabRegistrar.register(
                 new ResourceLocation("disx", "creativemodetab.disx"),
                 () -> CreativeTabRegistry.create(
                         Component.translatable("category.disx.tab"),
@@ -63,26 +63,26 @@ public class DisxMain {
                 )
         );
         //Item Registration Calls
-        DisxVinylShard.registerItem(itemsRegistrar, creativeModeTab);
-        DisxBlankDisc.registerItem(itemsRegistrar, creativeModeTab);
+        DisxVinylShard.registerItem(itemsRegistrar);
+        DisxBlankDisc.registerItem(itemsRegistrar);
         DisxCustomDisc.registerCustomDiscs(itemsRegistrar);
-        DisxLacquerDrop.registerItem(itemsRegistrar, creativeModeTab);
+        DisxLacquerDrop.registerItem(itemsRegistrar);
         DisxRecordStamp.registerItem(itemsRegistrar);
-        DisxAdvancedJukeboxMinecartItem.registerItem(itemsRegistrar, creativeModeTab);
+        DisxAdvancedJukeboxMinecartItem.registerItem(itemsRegistrar);
         //Block Registration Calls
         DisxAdvancedJukebox.registerBlock(blocksRegistrar);
-        DisxAdvancedJukebox.registerBlockItem(itemsRegistrar, creativeModeTab);
+        DisxAdvancedJukebox.registerBlockItem(itemsRegistrar);
         DisxAdvancedJukeboxEntity.registerEntity(blockEntityRegistrar);
         DisxStampMaker.registerBlock(blocksRegistrar);
-        DisxStampMaker.registerBlockItem(itemsRegistrar, creativeModeTab);
+        DisxStampMaker.registerBlockItem(itemsRegistrar);
         DisxStampMaker.registerBlockEntity(blockEntityRegistrar);
         DisxRecordPress.registerBlock(blocksRegistrar);
-        DisxRecordPress.registerBlockItem(itemsRegistrar, creativeModeTab);
+        DisxRecordPress.registerBlockItem(itemsRegistrar);
         DisxRecordPress.registerBlockEntity(blockEntityRegistrar);
         DisxLacquerBlock.registerBlock(blocksRegistrar);
-        DisxLacquerBlock.registerBlockItem(itemsRegistrar, creativeModeTab);
+        DisxLacquerBlock.registerBlockItem(itemsRegistrar);
         DisxEnderAdvancedJukebox.registerBlock(blocksRegistrar);
-        DisxEnderAdvancedJukebox.registerBlockItem(itemsRegistrar, creativeModeTab);
+        DisxEnderAdvancedJukebox.registerBlockItem(itemsRegistrar);
         //Command Registration Calls
         DisxConfigCommand.registerCommand();
         DisxForceStopCommand.registerCommand();
@@ -104,9 +104,9 @@ public class DisxMain {
         //Entity Registration Calls
         DisxAdvancedJukeboxMinecart.registerEntityType(entityTypeRegistrar);
         //Enchantment Registration Calls
-        DisxRetrogradeCurseEnchantment.registerEnchantment(enchantmentRegistrar, creativeModeTab);
-        DisxTempoEnchantment.registerEnchantment(enchantmentRegistrar, creativeModeTab);
-        DisxResonanceEnchantment.registerEnchantment(enchantmentRegistrar, creativeModeTab);
+        DisxRetrogradeCurseEnchantment.registerEnchantment(enchantmentRegistrar);
+        DisxTempoEnchantment.registerEnchantment(enchantmentRegistrar);
+        DisxResonanceEnchantment.registerEnchantment(enchantmentRegistrar);
 
 
         //Pull Mod Info
@@ -164,5 +164,8 @@ public class DisxMain {
         }
 
         DisxLogger.info("Success in Mod Launch (SERVER)");
+
+        //Assemble creative mode tab
+        ClientLifecycleEvent.CLIENT_STARTED.register(DisxCreativeModeTabAssembly::addItems);
     }
 }

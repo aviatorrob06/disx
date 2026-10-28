@@ -2,6 +2,7 @@ package xyz.ar06.disx.blocks;
 
 
 import dev.architectury.event.EventResult;
+import dev.architectury.registry.CreativeTabRegistry;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerPlayer;
@@ -10,6 +11,8 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.projectile.Projectile;
+import net.minecraft.world.item.*;
+import net.minecraft.world.item.enchantment.EnchantmentInstance;
 import net.minecraft.world.level.block.*;
 import xyz.ar06.disx.DisxSoundEvents;
 import xyz.ar06.disx.*;
@@ -30,10 +33,6 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.BlockItem;
-import net.minecraft.world.item.CreativeModeTab;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockBehaviour;
@@ -112,11 +111,11 @@ public class DisxAdvancedJukebox extends BaseEntityBlock {
                 return InteractionResult.SUCCESS;
             } else if (!entity.isHas_record()){
                 if (item instanceof DisxCustomDisc){
-                    if (stack.getTag() != null && stack.getTag().get("mediaUrl") != null && !stack.getTag().getString("mediaUrl").isEmpty()){
+                    if (stack.getTag() != null){
                         if (!isPassingAudioPrerequisiteChecks(player, level)){
                             return InteractionResult.FAIL;
                         }
-                        DisxLogger.debug("[advanced jukebox] doesn't have record, putting it in");
+                        DisxLogger.debug("doesn't have record, trying putting it in");
                         debounce = true;
                         String discName = stack.getTag().getString("discName");
                         CompoundTag stackTag = stack.getTag();
@@ -134,6 +133,9 @@ public class DisxAdvancedJukebox extends BaseEntityBlock {
                             stackTag.putString("mediaUrl", videoId);
                             stackTag.remove("videoId");
                             stack.setTag(stackTag);
+                        }
+                        if (!stackTag.contains("mediaUrl")){
+                            return InteractionResult.FAIL;
                         }
                         String mediaUrl = stackTag.getString("mediaUrl");
                         DisxWWW2PCMReference www2PCMReference = new DisxWWW2PCMReference(mediaUrl);
@@ -245,8 +247,15 @@ public class DisxAdvancedJukebox extends BaseEntityBlock {
         blockRegistration = registry.register(new ResourceLocation("disx", "advanced_jukebox"), () -> new DisxAdvancedJukebox(BlockBehaviour.Properties.copy(Blocks.JUKEBOX)));
     }
 
-    public static void registerBlockItem(Registrar<Item> registry, RegistrySupplier<CreativeModeTab> tab){
-        blockItemRegistration = registry.register(new ResourceLocation("disx","advanced_jukebox"), () -> new BlockItem(blockRegistration.get(), new Item.Properties().arch$tab(tab)));
+    public static void registerBlockItem(Registrar<Item> registry){
+        blockItemRegistration = registry.register(new ResourceLocation("disx","advanced_jukebox"), () -> new BlockItem(blockRegistration.get(), new Item.Properties()));
+    }
+
+    public static void registerTabItem(){
+        CreativeTabRegistry.appendBuiltinStack(
+                DisxCreativeModeTabAssembly.CREATIVE_MODE_TAB.get(),
+                new ItemStack(blockItemRegistration.get())
+        );
     }
 
     @Override

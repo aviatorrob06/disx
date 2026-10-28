@@ -1,5 +1,6 @@
 package xyz.ar06.disx.blocks;
 
+import dev.architectury.registry.CreativeTabRegistry;
 import dev.architectury.registry.registries.Registrar;
 import dev.architectury.registry.registries.RegistrySupplier;
 import net.minecraft.ChatFormatting;
@@ -62,8 +63,8 @@ public class DisxEnderAdvancedJukebox extends Block{
                     }
                     if (invList.get(0).isEmpty()){
                         CompoundTag handStackTag = handStack.getOrCreateTag();
-                        if (handStackTag != null && handStackTag.get("mediaUrl") != null && !handStackTag.getString("mediaUrl").isEmpty()){
-                            DisxLogger.debug("doesn't have record, putting it in");
+                        if (handStackTag != null){
+                            DisxLogger.debug("doesn't have record, trying putting it in");
                             if (!isPassingAudioPrerequisiteChecks(player, level)){
                                 DisxLogger.debug("player did not pass audio prerequisite check");
                                 return InteractionResult.FAIL;
@@ -84,6 +85,9 @@ public class DisxEnderAdvancedJukebox extends Block{
                                 handStackTag.remove("videoId");
                                 handStack.setTag(handStackTag);
                             }
+                            if (!handStackTag.contains("mediaUrl")){
+                                return InteractionResult.FAIL;
+                            }
                             String mediaUrl = handStackTag.getString("mediaUrl");
                             DisxWWW2PCMReference www2PCMReference = new DisxWWW2PCMReference(mediaUrl);
                             invList.set(0, handStack.copyWithCount(1));
@@ -93,7 +97,7 @@ public class DisxEnderAdvancedJukebox extends Block{
                             DisxLogger.debug("Checking for any active audio filters");
                             ArrayList<DisxAudioFilterType> audioFilters = DisxDiscEnchantmentHelper.buildAudioFilterArray(handStack);
                             DisxLogger.debug("Calling add to registry (LIVE)");
-                            DisxServerAudioRegistry.addToRegistry(blockPos, mediaUrl, player, level.dimension(), false, DisxAudioMotionType.LIVE, player.getUUID(), -1, audioFilters);
+                            DisxServerAudioRegistry.addToRegistry(blockPos, mediaUrl, player, level.getServer(), level.dimension(), false, DisxAudioMotionType.LIVE, player.getUUID(), -1, audioFilters);
                             helper.disx$setEnderAdvancedJukeboxInventory(ContainerHelper.saveAllItems(new CompoundTag(), invList));
                             handStack.shrink(1);
                             level.playSound(null, blockPos, SoundEvents.ENDER_EYE_LAUNCH, SoundSource.BLOCKS, 1.0F, 1.0F);
@@ -208,8 +212,15 @@ public class DisxEnderAdvancedJukebox extends Block{
         blockRegistration = registry.register(new ResourceLocation("disx", "ender_advanced_jukebox"), () -> new DisxEnderAdvancedJukebox(BlockBehaviour.Properties.copy(Blocks.ENDER_CHEST).strength(22.5F, 600.0F)));
     }
 
-    public static void registerBlockItem(Registrar<Item> registry, RegistrySupplier<CreativeModeTab> tab){
-        blockItemRegistration = registry.register(new ResourceLocation("disx","ender_advanced_jukebox"), () -> new BlockItem(blockRegistration.get(), new Item.Properties().arch$tab(tab)));
+    public static void registerBlockItem(Registrar<Item> registry){
+        blockItemRegistration = registry.register(new ResourceLocation("disx","ender_advanced_jukebox"), () -> new BlockItem(blockRegistration.get(), new Item.Properties()));
+    }
+
+    public static void registerTabItem(){
+        CreativeTabRegistry.appendBuiltinStack(
+                DisxCreativeModeTabAssembly.CREATIVE_MODE_TAB.get(),
+                new ItemStack(blockItemRegistration.get())
+        );
     }
 
     @Override
