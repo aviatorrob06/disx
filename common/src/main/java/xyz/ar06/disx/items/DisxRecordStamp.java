@@ -32,9 +32,9 @@ public class DisxRecordStamp extends Item {
     public void appendHoverText(ItemStack itemStack, @Nullable Level level, List<Component> list, TooltipFlag tooltipFlag) {
         CompoundTag tag = itemStack.getTag();
         if (tag != null){
-            String videoName = tag.getString("videoName");
-            if (!videoName.isEmpty() && !videoName.isBlank()){
-                list.add(Component.literal(videoName).withStyle(ChatFormatting.GRAY));
+            String mediaName = tag.getString("mediaName");
+            if (!mediaName.isEmpty() && !mediaName.isBlank()){
+                list.add(Component.literal(mediaName).withStyle(ChatFormatting.GRAY));
             } else {
                 list.add(Component.literal("BLANK").withStyle(ChatFormatting.ITALIC));
             }

@@ -63,10 +63,10 @@ public class DisxAdvancedJukeboxMinecart extends Minecart implements ContainerEn
     public InteractionResult interact(Player player, InteractionHand interactionHand) {
         if (interactionHand.equals(InteractionHand.MAIN_HAND) && !player.level().isClientSide()){
             ItemStack handStack = player.getMainHandItem();
-            if (handStack.getItem() instanceof DisxCustomDisc){
+            CompoundTag tag = handStack.getTag();
+            if (handStack.getItem() instanceof DisxCustomDisc && tag.contains("mediaUrl")){
                 if (!isHas_Record()){
                     DisxLogger.debug("Does not have record, taking and putting in");
-                    CompoundTag tag = handStack.getTag();
                     String discName = tag.getString("discName");
                     //alpha discs compatibility
                     if (discName.isBlank() || discName.isEmpty()){
@@ -220,8 +220,8 @@ public class DisxAdvancedJukeboxMinecart extends Minecart implements ContainerEn
     @Override
     public void setItem(int i, ItemStack itemStack) {
         items.set(i, itemStack);
-        if (itemStack.getItem() instanceof DisxCustomDisc){
-            CompoundTag tag = itemStack.getTag();
+        CompoundTag tag = itemStack.getTag();
+        if (itemStack.getItem() instanceof DisxCustomDisc && tag.contains("mediaUrl")){
             //legacy YT-Only source compatibility
             if (tag.contains("videoId")){
                 String videoId = tag.getString("videoId");
@@ -244,8 +244,8 @@ public class DisxAdvancedJukeboxMinecart extends Minecart implements ContainerEn
 
     public void setItem(int i, ItemStack itemStack, Player player) {
         items.set(i, itemStack);
-        if (itemStack.getItem() instanceof DisxCustomDisc){
-            CompoundTag tag = itemStack.getTag();
+        CompoundTag tag = itemStack.getTag();
+        if (itemStack.getItem() instanceof DisxCustomDisc && tag.contains("mediaUrl")){
             //legacy YT-Only source compatibility
             if (tag.contains("videoId")){
                 String videoId = tag.getString("videoId");
@@ -407,7 +407,7 @@ public class DisxAdvancedJukeboxMinecart extends Minecart implements ContainerEn
     @Override
     public boolean canTakeItem(Container container, int i, ItemStack itemStack) {
         if (i == 0){
-            if (itemStack.getItem() instanceof DisxCustomDisc){
+            if (itemStack.getItem() instanceof DisxCustomDisc && itemStack.getTag().contains("mediaUrl")) {
                 if (!DisxServerAudioRegistry.isNodeOnEntity(this.getUUID())){
                     return true;
                 }

@@ -112,7 +112,7 @@ public class DisxAdvancedJukebox extends BaseEntityBlock {
                 return InteractionResult.SUCCESS;
             } else if (!entity.isHas_record()){
                 if (item instanceof DisxCustomDisc){
-                    if (stack.getTag() != null && stack.getTag().get("videoId") != null && !stack.getTag().getString("videoId").isEmpty()){
+                    if (stack.getTag() != null && stack.getTag().get("mediaUrl") != null && !stack.getTag().getString("mediaUrl").isEmpty()){
                         if (!isPassingAudioPrerequisiteChecks(player, level)){
                             return InteractionResult.FAIL;
                         }

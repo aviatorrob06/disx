@@ -62,34 +62,38 @@ public class DisxEnderAdvancedJukebox extends Block{
                     }
                     if (invList.get(0).isEmpty()){
                         CompoundTag handStackTag = handStack.getOrCreateTag();
-                        if (handStackTag != null && handStackTag.get("videoId") != null && !handStackTag.getString("videoId").isEmpty()){
+                        if (handStackTag != null && handStackTag.get("mediaUrl") != null && !handStackTag.getString("mediaUrl").isEmpty()){
                             DisxLogger.debug("doesn't have record, putting it in");
                             if (!isPassingAudioPrerequisiteChecks(player, level)){
                                 DisxLogger.debug("player did not pass audio prerequisite check");
                                 return InteractionResult.FAIL;
                             }
                             String discName = handStackTag.getString("discName");
-                            String videoId = handStackTag.getString("videoId");
                             //alpha discs compatibility
                             if (discName.isBlank() || discName.isEmpty()){
                                 handStackTag.putString("discName", handStack.getHoverName().getString());
                                 handStack.setTag(handStackTag);
                             }
                             //legacy YT-Only source compatibility
-                            if (!videoId.contains("http")){
-                                videoId = "https://www.youtube.com/watch?v=" + videoId;
-                                handStackTag.putString("videoId", videoId);
+                            if (handStackTag.contains("videoId")){
+                                String videoId = handStackTag.getString("videoId");
+                                if (!videoId.contains("http")){
+                                    videoId = "https://www.youtube.com/watch?v=" + videoId;
+                                }
+                                handStackTag.putString("mediaUrl", videoId);
+                                handStackTag.remove("videoId");
                                 handStack.setTag(handStackTag);
                             }
-                            DisxWWW2PCMReference www2PCMReference = new DisxWWW2PCMReference(videoId);
+                            String mediaUrl = handStackTag.getString("mediaUrl");
+                            DisxWWW2PCMReference www2PCMReference = new DisxWWW2PCMReference(mediaUrl);
                             invList.set(0, handStack.copyWithCount(1));
                             DisxJukeboxUsageCooldownManager.updateCooldown(blockPos, level.dimension());
-                            DisxLogger.debug("Sending loading video message");
+                            DisxLogger.debug("Sending loading media message");
                             DisxServerPacketIndex.ServerPackets.loadingAudioIdMessage(www2PCMReference.getIdentifier(), player);
                             DisxLogger.debug("Checking for any active audio filters");
                             ArrayList<DisxAudioFilterType> audioFilters = DisxDiscEnchantmentHelper.buildAudioFilterArray(handStack);
                             DisxLogger.debug("Calling add to registry (LIVE)");
-                            DisxServerAudioRegistry.addToRegistry(blockPos, videoId, player, level.dimension(), false, DisxAudioMotionType.LIVE, player.getUUID(), -1, audioFilters);
+                            DisxServerAudioRegistry.addToRegistry(blockPos, mediaUrl, player, level.dimension(), false, DisxAudioMotionType.LIVE, player.getUUID(), -1, audioFilters);
                             helper.disx$setEnderAdvancedJukeboxInventory(ContainerHelper.saveAllItems(new CompoundTag(), invList));
                             handStack.shrink(1);
                             level.playSound(null, blockPos, SoundEvents.ENDER_EYE_LAUNCH, SoundSource.BLOCKS, 1.0F, 1.0F);

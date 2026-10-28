@@ -248,7 +248,7 @@ public class DisxWWW2PCMReference {
                     .build();
             HttpResponse<InputStream> response = httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
             if (response.statusCode() == 200){
-                DisxLogger.debug("Got response from WWW2PCM-API. Checking for errors.");
+                DisxLogger.debug("Got valid response from WWW2PCM-API");
 
                 JSONObject jsonObject = new JSONObject(response.body());
                 if (!jsonObject.isEmpty()){
@@ -260,7 +260,16 @@ public class DisxWWW2PCMReference {
                 Files.copy(in, Path.of(expectedFilePath), StandardCopyOption.REPLACE_EXISTING);
                 return newFile;
             } else {
-                throw new DisxWWW2PCMException("Error in API response", response.statusCode());
+                if (response.statusCode() == 403){
+                    JSONObject jsonObject = new JSONObject(response.body());
+                    if (jsonObject.has("detail")){
+                        throw new DisxWWW2PCMException(jsonObject.getJSONObject("detail").getString("error"), response.statusCode(), true);
+                    } else {
+                        throw new DisxWWW2PCMException("Error in API response", response.statusCode());
+                    }
+                } else {
+                    throw new DisxWWW2PCMException("Error in API response", response.statusCode());
+                }
             }
 
         } catch (Exception e){
@@ -302,7 +311,16 @@ public class DisxWWW2PCMReference {
                 cachedMetadata = jsonObject;
                 return jsonObject;
             } else {
-                throw new DisxWWW2PCMException("Error in API response", response.statusCode());
+                if (response.statusCode() == 403){
+                    JSONObject jsonObject = new JSONObject(response.body());
+                    if (jsonObject.has("detail")){
+                        throw new DisxWWW2PCMException(jsonObject.getJSONObject("detail").getString("error"), response.statusCode(), true);
+                    } else {
+                        throw new DisxWWW2PCMException("Error in API response", response.statusCode());
+                    }
+                } else {
+                    throw new DisxWWW2PCMException("Error in API response", response.statusCode());
+                }
             }
 
         } catch (IOException e) {

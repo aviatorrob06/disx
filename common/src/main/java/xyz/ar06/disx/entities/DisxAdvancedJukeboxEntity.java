@@ -89,8 +89,8 @@ public class DisxAdvancedJukeboxEntity extends BlockEntity implements ContainerS
 
     @Override
     public void setItem(int i, ItemStack itemStack) {
-        if (i == 0 && itemStack.getItem() instanceof DisxCustomDisc){
-            CompoundTag stackTag = itemStack.getTag();
+        CompoundTag stackTag = itemStack.getTag();
+        if (i == 0 && itemStack.getItem() instanceof DisxCustomDisc && stackTag.contains("mediaUrl")){
             //legacy YT-Only source compatibility
             if (stackTag.contains("videoId")){
                 String videoId = stackTag.getString("videoId");
@@ -130,8 +130,8 @@ public class DisxAdvancedJukeboxEntity extends BlockEntity implements ContainerS
     }
 
     public void setItem(int i, ItemStack itemStack, Player player) {
-        if (i == 0 && itemStack.getItem() instanceof DisxCustomDisc){
-            CompoundTag stackTag = itemStack.getTag();
+        CompoundTag stackTag = itemStack.getTag();
+        if (i == 0 && itemStack.getItem() instanceof DisxCustomDisc && stackTag.contains("mediaUrl")){
             //legacy YT-Only source compatibility
             if (stackTag.contains("videoId")){
                 String videoId = stackTag.getString("videoId");
@@ -201,7 +201,7 @@ public class DisxAdvancedJukeboxEntity extends BlockEntity implements ContainerS
 
     @Override
     public boolean canPlaceItemThroughFace(int i, ItemStack itemStack, @Nullable Direction direction) {
-        if (itemStack.getItem() instanceof DisxCustomDisc && direction.equals(Direction.UP)){
+        if (itemStack.getItem() instanceof DisxCustomDisc && direction.equals(Direction.UP) && itemStack.getTag().contains("mediaUrl")){
             return true;
         }
         return false;
@@ -209,7 +209,7 @@ public class DisxAdvancedJukeboxEntity extends BlockEntity implements ContainerS
 
     @Override
     public boolean canTakeItemThroughFace(int i, ItemStack itemStack, Direction direction) {
-        if (direction.equals(Direction.DOWN) && !this.isRecordPlaying()){
+        if (direction.equals(Direction.DOWN) && !this.isRecordPlaying() && itemStack.getTag().contains("mediaUrl")){
             return true;
         }
         return false;
