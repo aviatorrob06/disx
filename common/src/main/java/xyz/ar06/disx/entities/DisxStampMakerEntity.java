@@ -41,6 +41,8 @@ public class DisxStampMakerEntity extends BlockEntity implements Container, Worl
 
     private String mediaUrl;
 
+    private boolean processing = false;
+
 
     public DisxStampMakerEntity(BlockPos blockPos, BlockState blockState) {
         super(
@@ -48,6 +50,7 @@ public class DisxStampMakerEntity extends BlockEntity implements Container, Worl
                 blockPos,
                 blockState);
         this.items = NonNullList.withSize(2, ItemStack.EMPTY);
+        this.processing = false;
         DisxLogger.debug("MAKING NEW ENTITY AT " + blockPos);
     }
 
@@ -76,6 +79,7 @@ public class DisxStampMakerEntity extends BlockEntity implements Container, Worl
     public ItemStack removeItem(int i, int j) {
         ItemStack stack = this.items.get(i).copy();
         this.items.set(i, ItemStack.EMPTY);
+        this.processing = false;
         return stack;
     }
 
@@ -104,6 +108,7 @@ public class DisxStampMakerEntity extends BlockEntity implements Container, Worl
     public void load(CompoundTag compoundTag) {
         this.items = NonNullList.withSize(2, ItemStack.EMPTY);
         ContainerHelper.loadAllItems(compoundTag, this.items);
+        this.processing = compoundTag.getBoolean("processingUrl");
         super.load(compoundTag);
     }
 
@@ -160,6 +165,7 @@ public class DisxStampMakerEntity extends BlockEntity implements Container, Worl
     @Override
     protected void saveAdditional(CompoundTag compoundTag) {
         ContainerHelper.saveAllItems(compoundTag, this.items);
+        compoundTag.putBoolean("processingUrl", this.processing);
         super.saveAdditional(compoundTag);
     }
 
@@ -177,11 +183,12 @@ public class DisxStampMakerEntity extends BlockEntity implements Container, Worl
     public void setMediaUrl(String mediaUrl, Player player) {
         if (mediaUrl.equals("") || mediaUrl.equals(" ")){
             this.mediaUrl = null;
+            this.setChanged();
         } else {
             this.mediaUrl = mediaUrl;
+            this.setChanged();
             if (this.getItem(0).is(DisxLacquerBlock.itemRegistration.get())){
                 produceStamp(player);
-                this.setChanged();
             }
         }
     }
@@ -208,17 +215,23 @@ public class DisxStampMakerEntity extends BlockEntity implements Container, Worl
             if (!DisxInternetCheck.checkInternet()){
                 DisxSystemMessages.noInternetErrorMessage(player);
             } else {
+                this.processing = true;
                 try {
+                    this.setChanged();
                     DisxWWW2PCMReference www2PCMReference = new DisxWWW2PCMReference(this.mediaUrl);
                     String title = www2PCMReference.probeTitle();
                     int duration = www2PCMReference.probeDuration();
                     String identifier = www2PCMReference.getIdentifier();
                     if (duration > 1800) {
                         DisxSystemMessages.badDuration(player);
+                        this.processing = false;
+                        this.setMediaUrl("", player);
                         return;
                     }
                     if (this.items.get(0).equals(ItemStack.EMPTY)){
                         DisxLogger.debug("no lacquer block detected");
+                        this.processing = false;
+                        this.setMediaUrl("", player);
                         return;
                     }
                     this.setItem(0, ItemStack.EMPTY);
@@ -245,16 +258,24 @@ public class DisxStampMakerEntity extends BlockEntity implements Container, Worl
                     }
                 } catch (DisxMalformedURLException e){
                     DisxLogger.error(e);
-                    DisxSystemMessages.badURL(player);
+                    if (this.items.get(0).is(DisxLacquerBlock.itemRegistration.get())) {
+                        DisxSystemMessages.badURL(player);
+                    }
                 } catch (DisxWWW2PCMException e){
                     DisxLogger.error(e);
                     if (e.wasResourceNotFound()){
-                        DisxSystemMessages.noMediaFound(player);
+                        if (this.items.get(0).is(DisxLacquerBlock.itemRegistration.get())) {
+                            DisxSystemMessages.noMediaFound(player);
+                        }
                     } else {
-                        DisxSystemMessages.apiError(player);
+                        if (this.items.get(0).is(DisxLacquerBlock.itemRegistration.get())) {
+                            DisxSystemMessages.apiError(player);
+                        }
                     }
 
                 }
+                this.processing = false;
+                this.setMediaUrl("", player);
             }
         });
 
@@ -267,16 +288,24 @@ public class DisxStampMakerEntity extends BlockEntity implements Container, Worl
             if (!DisxInternetCheck.checkInternet()){
                 DisxSystemMessages.noInternetFoundStampMakerAsync(this.getLevel().getServer(), this.getBlockPos());
             } else {
+                this.processing = true;
                 try {
+                    this.setChanged();
                     DisxWWW2PCMReference www2PCMReference = new DisxWWW2PCMReference(this.mediaUrl);
                     String title = www2PCMReference.probeTitle();
                     int duration = www2PCMReference.probeDuration();
                     DisxWWW2PCMSourceType sourceType = www2PCMReference.getService();
                     if (duration > 1800) {
                         DisxSystemMessages.badDuration(lvl.getServer());
+                        this.processing = false;
+                        this.mediaUrl = null;
+                        this.setChanged();
                         return;
                     }
                     if (this.items.get(0).equals(ItemStack.EMPTY)){
+                        this.processing = false;
+                        this.mediaUrl = null;
+                        this.setChanged();
                         return;
                     }
                     this.setItem(0, ItemStack.EMPTY);
@@ -305,16 +334,24 @@ public class DisxStampMakerEntity extends BlockEntity implements Container, Worl
                     }
                 } catch (DisxMalformedURLException e){
                     DisxLogger.error(e);
-                    DisxSystemMessages.badURLStampMakerAsync(lvl.getServer(), blockPos);
+                    if (this.items.get(0).is(DisxLacquerBlock.itemRegistration.get())){
+                        DisxSystemMessages.badURLStampMakerAsync(lvl.getServer(), blockPos);
+                    }
                 } catch (DisxWWW2PCMException e){
                     DisxLogger.error(e);
                     if (e.wasResourceNotFound()){
-                        DisxSystemMessages.mediaNotFoundStampMakerAsync(lvl.getServer(), blockPos);
+                        if (this.items.get(0).is(DisxLacquerBlock.itemRegistration.get())) {
+                            DisxSystemMessages.mediaNotFoundStampMakerAsync(lvl.getServer(), blockPos);
+                        }
                     } else {
-                        DisxSystemMessages.apiErrorStampMakerAsync(lvl.getServer(), blockPos);
+                        if (this.items.get(0).is(DisxLacquerBlock.itemRegistration.get())) {
+                            DisxSystemMessages.apiErrorStampMakerAsync(lvl.getServer(), blockPos);
+                        }
                     }
 
                 }
+                this.processing = false;
+                this.setChanged();
             }
         });
     }
@@ -376,5 +413,9 @@ public class DisxStampMakerEntity extends BlockEntity implements Container, Worl
     @Override
     public void clearContent() {
         this.items = NonNullList.withSize(2, ItemStack.EMPTY);
+    }
+
+    public boolean isProcessing(){
+        return this.processing;
     }
 }

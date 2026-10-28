@@ -4,7 +4,6 @@ import org.json.JSONObject;
 import xyz.ar06.disx.DisxLogger;
 import xyz.ar06.disx.DisxModInfo;
 import xyz.ar06.disx.DisxTmpHandler;
-import xyz.ar06.disx.exceptions.DisxException;
 import xyz.ar06.disx.exceptions.DisxMalformedURLException;
 import xyz.ar06.disx.exceptions.DisxWWW2PCMException;
 
@@ -24,8 +23,12 @@ import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
-import java.util.HexFormat;
-import java.util.Locale;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class DisxWWW2PCMReference {
 
@@ -35,6 +38,18 @@ public class DisxWWW2PCMReference {
     private String identifier;
     private String hashedFileName;
     private JSONObject cachedMetadata;
+
+    private static final AtomicInteger threadCounter = new AtomicInteger(1);
+    private final ExecutorService www2PCMExecutor =
+            Executors.newFixedThreadPool(2, runnable -> {
+                Thread thread = new Thread(
+                        runnable,
+                        "WWW2PCM/Thread-" + threadCounter.getAndIncrement()
+                );
+
+                thread.setDaemon(true);
+                return thread;
+            });
 
     public DisxWWW2PCMReference(String url) throws DisxWWW2PCMException, DisxMalformedURLException {
         this.mediaUrl = url;
@@ -214,7 +229,7 @@ public class DisxWWW2PCMReference {
         return identifier;
     }
 
-    public File resolveAudioFile(){
+    public File resolveAudioFile() {
         String apiArg = switch (this.service){
             case YOUTUBE -> "video_id";
             case SPOTIFY -> "track_id";
@@ -226,55 +241,62 @@ public class DisxWWW2PCMReference {
         if (this.service.equals(DisxWWW2PCMSourceType.INVALID)){
             return null;
         }
-        String reqUrl = this.apiAccessUrl + this.service.getValue() + "/pcm?" + apiArg + "=" + this.identifier;
         try {
-            DisxLogger.debug("Audio file resolve requested. Checking tmp directory caches");
-            String expectedFilePath = "./.disx-tmp/cache/" + this.hashedFileName +".pcm";
-            File returnFile = new File(expectedFilePath);
-            if (returnFile.exists()){
-                Thread.sleep(1000); //sleep for a second to ensure most clients got their audio lines ready for data streaming
-                //only because the sleep needs to happen when the audio is loaded from cached
-                DisxLogger.debug("Found cached audio file. Returning");
-                DisxTmpHandler.markAudioUsed(returnFile);
-                return returnFile;
-            }
-            DisxLogger.debug("Did not find in cache. Requesting from WWW2PCM-API");
-            HttpClient httpClient = HttpClient.newBuilder()
-                    .followRedirects(HttpClient.Redirect.ALWAYS)
-                    .connectTimeout(Duration.ofSeconds(20))
-                    .build();
-            HttpRequest request = HttpRequest.newBuilder(URI.create(reqUrl))
-                    .GET()
-                    .build();
-            HttpResponse<InputStream> response = httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
-            if (response.statusCode() == 200){
-                DisxLogger.debug("Got valid response from WWW2PCM-API");
-
-                JSONObject jsonObject = new JSONObject(response.body());
-                if (!jsonObject.isEmpty()){
-                    throw new DisxWWW2PCMException(jsonObject.getJSONObject("detail").getString("error"), response.statusCode(), true);
-                }
-                DisxLogger.debug("No errors found. Downloading audio...");
-                InputStream in = response.body();
-                File newFile = new File(expectedFilePath);
-                Files.copy(in, Path.of(expectedFilePath), StandardCopyOption.REPLACE_EXISTING);
-                return newFile;
-            } else {
-                if (response.statusCode() == 403){
-                    JSONObject jsonObject = new JSONObject(response.body());
-                    if (jsonObject.has("detail")){
-                        throw new DisxWWW2PCMException(jsonObject.getJSONObject("detail").getString("error"), response.statusCode(), true);
-                    } else {
-                        throw new DisxWWW2PCMException("Error in API response", response.statusCode());
+            return CompletableFuture.supplyAsync(() -> {
+                try {
+                    String reqUrl = this.apiAccessUrl + this.service.getValue() + "/pcm?" + apiArg + "=" + this.identifier;
+                    DisxLogger.debug("Audio file resolve requested. Checking tmp directory caches");
+                    String expectedFilePath = "./.disx-tmp/cache/" + this.hashedFileName +".pcm";
+                    File returnFile = new File(expectedFilePath);
+                    if (returnFile.exists()){
+                        Thread.sleep(1000); //sleep for a second to ensure most clients got their audio lines ready for data streaming
+                        //only because the sleep needs to happen when the audio is loaded from cached
+                        DisxLogger.debug("Found cached audio file. Returning");
+                        DisxTmpHandler.markAudioUsed(returnFile);
+                        return returnFile;
                     }
-                } else {
-                    throw new DisxWWW2PCMException("Error in API response", response.statusCode());
-                }
-            }
+                    DisxLogger.debug("Did not find in cache. Requesting from WWW2PCM-API");
+                    HttpClient httpClient = HttpClient.newBuilder()
+                            .followRedirects(HttpClient.Redirect.ALWAYS)
+                            .connectTimeout(Duration.ofSeconds(20))
+                            .build();
+                    HttpRequest request = HttpRequest.newBuilder(URI.create(reqUrl))
+                            .GET()
+                            .build();
+                    HttpResponse<InputStream> response = httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
+                    if (response.statusCode() == 200){
+                        DisxLogger.debug("Got valid response from WWW2PCM-API");
 
+                        JSONObject jsonObject = new JSONObject(response.body());
+                        if (!jsonObject.isEmpty()){
+                            throw new DisxWWW2PCMException(jsonObject.getJSONObject("detail").getString("error"), response.statusCode(), true);
+                        }
+                        DisxLogger.debug("No errors found. Downloading audio...");
+                        InputStream in = response.body();
+                        File newFile = new File(expectedFilePath);
+
+                        Files.copy(in, Path.of(expectedFilePath), StandardCopyOption.REPLACE_EXISTING);
+
+                        return newFile;
+                    } else {
+                        if (response.statusCode() == 403){
+                            JSONObject jsonObject = new JSONObject(response.body());
+                            if (jsonObject.has("detail")){
+                                throw new DisxWWW2PCMException(jsonObject.getJSONObject("detail").getString("error"), response.statusCode(), true);
+                            } else {
+                                throw new DisxWWW2PCMException("Error in API response", response.statusCode());
+                            }
+                        } else {
+                            throw new DisxWWW2PCMException("Error in API response", response.statusCode());
+                        }
+                    }
+                } catch (IOException | InterruptedException e){
+                    throw new DisxWWW2PCMException(Arrays.toString(e.getStackTrace()));
+                }
+
+            }, www2PCMExecutor).get();
         } catch (Exception e){
-            e.printStackTrace();
-            return null;
+            throw new DisxWWW2PCMException(Arrays.toString(e.getStackTrace()));
         }
     }
 
@@ -293,40 +315,44 @@ public class DisxWWW2PCMReference {
         if (this.service.equals(DisxWWW2PCMSourceType.INVALID)){
             throw new DisxMalformedURLException("Malformed URL!");
         }
-        String reqUrl = this.apiAccessUrl + this.service.getValue() + "/metadata?" + apiArg + "=" + this.identifier;
-        DisxLogger.debug("REQ URL: " + reqUrl);
         try {
-            HttpClient httpClient = HttpClient.newHttpClient();
-            HttpRequest request = HttpRequest.newBuilder(URI.create(reqUrl))
-                    .GET()
-                    .build();
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            if (response.statusCode() == 200){
-                JSONObject jsonObject = new JSONObject(response.body());
-                if (jsonObject.has("detail")){
-                    if (jsonObject.getJSONObject("detail").has("error")){
-                        throw new DisxWWW2PCMException(jsonObject.getJSONObject("detail").getString("error"), response.statusCode(), true);
-                    }
-                }
-                cachedMetadata = jsonObject;
-                return jsonObject;
-            } else {
-                if (response.statusCode() == 403){
-                    JSONObject jsonObject = new JSONObject(response.body());
-                    if (jsonObject.has("detail")){
-                        throw new DisxWWW2PCMException(jsonObject.getJSONObject("detail").getString("error"), response.statusCode(), true);
+            return CompletableFuture.supplyAsync(() -> {
+                String reqUrl = this.apiAccessUrl + this.service.getValue() + "/metadata?" + apiArg + "=" + this.identifier;
+                DisxLogger.debug("REQ URL: " + reqUrl);
+                try {
+                    HttpClient httpClient = HttpClient.newHttpClient();
+                    HttpRequest request = HttpRequest.newBuilder(URI.create(reqUrl))
+                            .GET()
+                            .build();
+                    HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+                    if (response.statusCode() == 200){
+                        JSONObject jsonObject = new JSONObject(response.body());
+                        if (jsonObject.has("detail")){
+                            if (jsonObject.getJSONObject("detail").has("error")){
+                                throw new DisxWWW2PCMException(jsonObject.getJSONObject("detail").getString("error"), response.statusCode(), true);
+                            }
+                        }
+                        cachedMetadata = jsonObject;
+                        return jsonObject;
                     } else {
-                        throw new DisxWWW2PCMException("Error in API response", response.statusCode());
+                        if (response.statusCode() == 403){
+                            JSONObject jsonObject = new JSONObject(response.body());
+                            if (jsonObject.has("detail")){
+                                throw new DisxWWW2PCMException(jsonObject.getJSONObject("detail").getString("error"), response.statusCode(), true);
+                            } else {
+                                throw new DisxWWW2PCMException("Error in API response", response.statusCode());
+                            }
+                        } else {
+                            throw new DisxWWW2PCMException("Error in API response", response.statusCode());
+                        }
                     }
-                } else {
-                    throw new DisxWWW2PCMException("Error in API response", response.statusCode());
-                }
-            }
 
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+                } catch (IOException | InterruptedException e) {
+                    throw new DisxWWW2PCMException(Arrays.toString(e.getStackTrace()));
+                }
+            }, www2PCMExecutor).get();
+        } catch (InterruptedException | ExecutionException e) {
+            throw new DisxWWW2PCMException(Arrays.toString(e.getStackTrace()));
         }
     }
 

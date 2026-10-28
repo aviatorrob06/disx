@@ -1,5 +1,8 @@
 package xyz.ar06.disx.blocks;
 
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.util.RandomSource;
 import xyz.ar06.disx.DisxLogger;
 import xyz.ar06.disx.DisxServerPacketIndex;
 import xyz.ar06.disx.entities.DisxStampMakerEntity;
@@ -61,6 +64,8 @@ public class DisxStampMaker extends BaseEntityBlock {
     static VoxelShape blockShape90 = makeShape90();
     static VoxelShape blockShape180 = makeShape180();
     static VoxelShape blockShape270 = makeShape270();
+
+    private int tickCounter = 0;
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
@@ -209,6 +214,26 @@ public class DisxStampMaker extends BaseEntityBlock {
     @Override
     public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState blockState, BlockEntityType<T> blockEntityType) {
         return super.getTicker(level, blockState, blockEntityType);
+    }
+
+
+    @Override
+    public void animateTick(BlockState blockState, Level level, BlockPos blockPos, RandomSource randomSource) {
+        if (level.isClientSide()) {
+            BlockEntity blockEntity = level.getBlockEntity(blockPos);
+            if (blockEntity instanceof DisxStampMakerEntity stampMakerEntity){
+                if (stampMakerEntity.isProcessing()){
+                    tickCounter++;
+                    if (tickCounter == 4){
+                        tickCounter = 0;
+                        level.playSound(Minecraft.getInstance().player, blockPos, SoundEvents.UI_LOOM_SELECT_PATTERN, SoundSource.BLOCKS);
+                    }
+                } else {
+                    tickCounter = 0;
+                }
+            }
+        }
+        super.animateTick(blockState, level, blockPos, randomSource);
     }
 
     @Nullable
