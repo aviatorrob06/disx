@@ -24,13 +24,12 @@ public class DisxClientPacketIndex  {
 
     static Logger logger = LoggerFactory.getLogger("disx");
     public static void registerClientPacketReceivers() {
-        //NetworkManager.registerReceiver(NetworkManager.Side.S2C, new ResourceLocation("disx","audioplayerplayevent"), (ClientPacketReceivers::receiveAudioPlayerPlayEvent));
         NetworkManager.registerReceiver(NetworkManager.Side.S2C, new ResourceLocation("disx","serveraudioregistryevent"), (ClientPacketReceivers::receiveServerAudioRegistryEvent));
-        NetworkManager.registerReceiver(NetworkManager.Side.S2C, new ResourceLocation("disx","playingvidmsg"), (ClientPacketReceivers::receiveLoadedMsgEvent));
-        NetworkManager.registerReceiver(NetworkManager.Side.S2C, new ResourceLocation("disx","openvideoidscreen"), (ClientPacketReceivers::receiveOpenVideoIdScreenEvent));
+        NetworkManager.registerReceiver(NetworkManager.Side.S2C, new ResourceLocation("disx","playingmediamsg"), (ClientPacketReceivers::receiveLoadedMsgEvent));
+        NetworkManager.registerReceiver(NetworkManager.Side.S2C, new ResourceLocation("disx","openmediaurlscreen"), (ClientPacketReceivers::receiveOpenMediaUrlScreenEvent));
         NetworkManager.registerReceiver(NetworkManager.Side.S2C, new ResourceLocation("disx", "muteplayer"), ClientPacketReceivers::receivePlayerMute);
         NetworkManager.registerReceiver(NetworkManager.Side.S2C, new ResourceLocation("disx","audiodata"), ClientPacketReceivers::receiveAudioData);
-        NetworkManager.registerReceiver(NetworkManager.Side.S2C, new ResourceLocation("disx","loadingvidmsg"), ClientPacketReceivers::receiveLoadingMsgEvent);
+        NetworkManager.registerReceiver(NetworkManager.Side.S2C, new ResourceLocation("disx","loadingmediamsg"), ClientPacketReceivers::receiveLoadingMsgEvent);
         NetworkManager.registerReceiver(NetworkManager.Side.S2C, new ResourceLocation("disx","loopmsg"), ClientPacketReceivers::receiveLoopMsg);
         NetworkManager.registerReceiver(NetworkManager.Side.S2C, new ResourceLocation("disx","pausemsg"), ClientPacketReceivers::receivePauseMsg);
         NetworkManager.registerReceiver(NetworkManager.Side.S2C, new ResourceLocation("disx", "configinfo"), ClientPacketReceivers::receiveConfigInfo);
@@ -95,17 +94,17 @@ public class DisxClientPacketIndex  {
         }
 
         public static void receiveLoadedMsgEvent(FriendlyByteBuf buf, NetworkManager.PacketContext context){
-            String videoId = buf.readUtf();
-            DisxLogger.debug("Sending playing video message");
-            DisxSystemMessages.playingVideo(videoId);
+            String mediaUrl = buf.readUtf();
+            DisxLogger.debug("Sending playing media message");
+            DisxSystemMessages.playingMedia(mediaUrl);
         }
 
         public static void receiveLoadingMsgEvent(FriendlyByteBuf buf, NetworkManager.PacketContext context){
-            String videoId = buf.readUtf();
-            DisxSystemMessages.loadingVideo(videoId);
+            String mediaUrl = buf.readUtf();
+            DisxSystemMessages.loadingMedia(mediaUrl);
         }
 
-        public static void receiveOpenVideoIdScreenEvent(FriendlyByteBuf buf, NetworkManager.PacketContext context){
+        public static void receiveOpenMediaUrlScreenEvent(FriendlyByteBuf buf, NetworkManager.PacketContext context){
             BlockPos blockPos = buf.readBlockPos();
             Minecraft.getInstance().execute(() -> {
                 DisxStampMakerGUI.setScreen(blockPos);
@@ -161,11 +160,11 @@ public class DisxClientPacketIndex  {
     }
 
     public class ClientPackets{
-        public static void playerSuccessStatus(String status, BlockPos blockPos, String videoId, Boolean fromSoundCommand, Boolean playerCanHear){
+        @Deprecated public static void playerSuccessStatus(String status, BlockPos blockPos, String mediaUrl, Boolean fromSoundCommand, Boolean playerCanHear){
             FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
             buf.writeUtf(status);
             buf.writeBlockPos(blockPos);
-            buf.writeUtf(videoId);
+            buf.writeUtf(mediaUrl);
             buf.writeBoolean(fromSoundCommand);
             buf.writeBoolean(playerCanHear);
             NetworkManager.sendToServer(new ResourceLocation("disx","playersuccessstatus"), buf);
@@ -176,17 +175,17 @@ public class DisxClientPacketIndex  {
             NetworkManager.sendToServer(new ResourceLocation("disx","retrieveserveraudioregistry"), buf);
         }
 
-        public static void pushVideoId(String videoId, BlockPos blockPos){
+        public static void pushMediaUrl(String mediaUrl, BlockPos blockPos){
             FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
-            buf.writeUtf(videoId);
+            buf.writeUtf(mediaUrl);
             buf.writeBlockPos(blockPos);
             NetworkManager.sendToServer(
-                    new ResourceLocation("disx","videoidselection"),
+                    new ResourceLocation("disx","mediaurlselection"),
                     buf
             );
         }
 
-        public static void singleplayerTrackEnd(BlockPos blockPos, ResourceLocation dimension){
+        @Deprecated public static void singleplayerTrackEnd(BlockPos blockPos, ResourceLocation dimension){
             FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
             buf.writeBlockPos(blockPos);
             buf.writeResourceLocation(dimension);

@@ -90,8 +90,19 @@ public class DisxAdvancedJukeboxEntity extends BlockEntity implements ContainerS
     @Override
     public void setItem(int i, ItemStack itemStack) {
         if (i == 0 && itemStack.getItem() instanceof DisxCustomDisc){
+            CompoundTag stackTag = itemStack.getTag();
+            //legacy YT-Only source compatibility
+            if (stackTag.contains("videoId")){
+                String videoId = stackTag.getString("videoId");
+                if (!videoId.contains("http")){
+                    videoId = "https://www.youtube.com/watch?v=" + videoId;
+                }
+                stackTag.putString("mediaUrl", videoId);
+                stackTag.remove("videoId");
+                itemStack.setTag(stackTag);
+            }
+            String mediaUrl = itemStack.getTag().getString("mediaUrl");
             itemInventory.set(i, itemStack);
-            String videoId = itemStack.getTag().getString("videoId");
             int jukeboxPower = this.getLevel().getBestNeighborSignal(this.getBlockPos());
             boolean loop = jukeboxPower > 0;
             ArrayList<DisxAudioFilterType> audioFilters = new ArrayList<DisxAudioFilterType>();
@@ -111,7 +122,7 @@ public class DisxAdvancedJukeboxEntity extends BlockEntity implements ContainerS
                 };
             }
 
-            DisxServerAudioRegistry.addToRegistry(this.getBlockPos(), videoId, null, level.dimension(), loop, DisxAudioMotionType.STATIC, new UUID(0L, 0L), rogueRadius, audioFilters);
+            DisxServerAudioRegistry.addToRegistry(this.getBlockPos(), mediaUrl, null, level.dimension(), loop, DisxAudioMotionType.STATIC, new UUID(0L, 0L), rogueRadius, audioFilters);
         } else {
             itemInventory.set(i, itemStack);
         }
@@ -120,14 +131,25 @@ public class DisxAdvancedJukeboxEntity extends BlockEntity implements ContainerS
 
     public void setItem(int i, ItemStack itemStack, Player player) {
         if (i == 0 && itemStack.getItem() instanceof DisxCustomDisc){
+            CompoundTag stackTag = itemStack.getTag();
+            //legacy YT-Only source compatibility
+            if (stackTag.contains("videoId")){
+                String videoId = stackTag.getString("videoId");
+                if (!videoId.contains("http")){
+                    videoId = "https://www.youtube.com/watch?v=" + videoId;
+                }
+                stackTag.putString("mediaUrl", videoId);
+                stackTag.remove("videoId");
+                itemStack.setTag(stackTag);
+            }
+            String mediaUrl = itemStack.getTag().getString("mediaUrl");
             itemInventory.set(i, itemStack);
-            String videoId = itemStack.getTag().getString("videoId");
             int jukeboxPower = this.getLevel().getBestNeighborSignal(this.getBlockPos());
             boolean loop = jukeboxPower > 0;
             ArrayList<DisxAudioFilterType> audioFilters = DisxDiscEnchantmentHelper.buildAudioFilterArray(itemStack);
             int rogueRadius = -1;
 
-            DisxServerAudioRegistry.addToRegistry(this.getBlockPos(), videoId, player, level.dimension(), loop, DisxAudioMotionType.STATIC, new UUID(0L, 0L), rogueRadius, audioFilters);
+            DisxServerAudioRegistry.addToRegistry(this.getBlockPos(), mediaUrl, player, level.dimension(), loop, DisxAudioMotionType.STATIC, new UUID(0L, 0L), rogueRadius, audioFilters);
         } else {
             itemInventory.set(i, itemStack);
         }
@@ -139,7 +161,7 @@ public class DisxAdvancedJukeboxEntity extends BlockEntity implements ContainerS
         return false;
     }
 
-    public void tryGetUpdatedDiscName(Player player){
+    @Deprecated public void tryGetUpdatedDiscName(Player player){
         ItemStack discStack = this.itemInventory.get(0);
         if (!discStack.isEmpty()){
             CompoundTag compoundTag = discStack.getTag();

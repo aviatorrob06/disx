@@ -41,25 +41,33 @@ public class DisxSystemMessages {
         player.sendSystemMessage(Component.translatable("sysmsg.disx.error_loading_vid").withStyle(Style.EMPTY.withColor(TextColor.fromLegacyFormat(ChatFormatting.RED))));
     }
 
-    public static void apiError(LocalPlayer player){
+    public static void apiError(Player player){
         player.sendSystemMessage(Component.translatable("sysmsg.disx.error_api_response").withStyle(Style.EMPTY.withColor(TextColor.fromLegacyFormat(ChatFormatting.RED))));
     }
 
-    public static void noVideoFound(Player player){
+    public static void apiError(MinecraftServer server){
+        server.sendSystemMessage(Component.translatable("sysmsg.disx.error_api_response").withStyle(Style.EMPTY.withColor(TextColor.fromLegacyFormat(ChatFormatting.RED))));
+    }
+
+    public static void apiErrorStampMakerAsync(MinecraftServer server, BlockPos blockPos){
+        server.sendSystemMessage(Component.literal("Disx Error: Tried to make Record Stamp at " + blockPos.toString() + " but WWW2PCM-API had a hiccup!").withStyle(Style.EMPTY.withColor(TextColor.fromLegacyFormat(ChatFormatting.RED))));
+    }
+
+    public static void noMediaFound(Player player){
         ServerPlayer serverPlayer = (ServerPlayer) player;
         serverPlayer.sendSystemMessage(Component.translatable("sysmsg.disx.error_no_match").withStyle(Style.EMPTY.withColor(TextColor.fromLegacyFormat(ChatFormatting.RED))));
     }
 
-    public static void noVideoFound(MinecraftServer server){
-        server.sendSystemMessage(Component.literal("Disx Error: No video found!").withStyle(Style.EMPTY.withColor(TextColor.fromLegacyFormat(ChatFormatting.RED))));
+    public static void noMediaFound(MinecraftServer server){
+        server.sendSystemMessage(Component.literal("Disx Error: No media found!").withStyle(Style.EMPTY.withColor(TextColor.fromLegacyFormat(ChatFormatting.RED))));
     }
 
-    public static void noVideoFound(LocalPlayer player){
+    public static void noMediaFound(LocalPlayer player){
         player.sendSystemMessage(Component.translatable("sysmsg.disx.error_no_match").withStyle(Style.EMPTY.withColor(TextColor.fromLegacyFormat(ChatFormatting.RED))));
     }
 
-    public static void playingAtLocation(MinecraftServer server, String playerName, BlockPos pos, String videoId, ResourceLocation dimension){
-        server.sendSystemMessage(Component.literal("" + playerName + " is playing Video '" + videoId +"' at " + pos.toString() + " in " + dimension.toString()));
+    public static void playingAtLocation(MinecraftServer server, String playerName, BlockPos pos, String mediaUrl, ResourceLocation dimension){
+        server.sendSystemMessage(Component.literal("" + playerName + " is playing '" + mediaUrl +"' at " + pos.toString() + " in " + dimension.toString()));
     }
 
     public static void invalidDiscType(Player player){
@@ -99,8 +107,8 @@ public class DisxSystemMessages {
         server.sendSystemMessage(Component.literal("Disx Error: Tried to make Record Stamp at " + blockPos.toString() + " but no internet connection has been found!"));
     }
 
-    public static void videoNotFoundStampMakerAsync(MinecraftServer server, BlockPos blockPos){
-        server.sendSystemMessage(Component.literal("Disx Error: Tried to make Record Stamp at " + blockPos.toString() + " but no video has been found for provided video id!"));
+    public static void mediaNotFoundStampMakerAsync(MinecraftServer server, BlockPos blockPos){
+        server.sendSystemMessage(Component.literal("Disx Error: Tried to make Record Stamp at " + blockPos.toString() + " but no media has been found for provided media url!"));
     }
 
     public static void badDuration(Player player){
@@ -108,26 +116,39 @@ public class DisxSystemMessages {
         serverPlayer.sendSystemMessage(Component.translatable("sysmsg.disx.error_bad_duration", "30").withStyle(ChatFormatting.RED));
     }
 
+    public static void badURL(Player player){
+        ServerPlayer serverPlayer = (ServerPlayer) player;
+        serverPlayer.sendSystemMessage(Component.translatable("sysmsg.disx.error_bad_url", "30").withStyle(ChatFormatting.RED));
+    }
+
+    public static void badURL(MinecraftServer server){
+        server.sendSystemMessage(Component.translatable("sysmsg.disx.error_bad_url", "30").withStyle(ChatFormatting.RED));
+    }
+
+    public static void badURLStampMakerAsync(MinecraftServer server, BlockPos blockPos){
+        server.sendSystemMessage(Component.literal("Disx Error: Tried to make Record Stamp at " + blockPos.toString() + " but specified URL was malformed!"));
+    }
+
     public static void badDuration(MinecraftServer server){
-        server.sendSystemMessage(Component.literal("Disx Error: Video length too long! (Max Length: 30 min)").withStyle(ChatFormatting.RED));
+        server.sendSystemMessage(Component.literal("Disx Error: Media length too long! (Max Length: 30 min)").withStyle(ChatFormatting.RED));
     }
 
     public static void badDurationStampMakerAsync(MinecraftServer server, BlockPos blockPos){
-        server.sendSystemMessage(Component.literal("Disx Error: Tried to make Record Stamp at " + blockPos.toString() + " but video length was too long! (Max Length: 30m)"));
+        server.sendSystemMessage(Component.literal("Disx Error: Tried to make Record Stamp at " + blockPos.toString() + " but media length was too long! (Max Length: 30m)"));
     }
 
-
-    public static void ageRestrictionEnabled(Player player){
-        ServerPlayer serverPlayer = (ServerPlayer) player;
-        serverPlayer.sendSystemMessage(Component.literal("Disx Error: This video is age restricted, and age restricted playback is not allowed on this server!").withStyle(ChatFormatting.RED));
+    public static void loadingMedia(String audioId){
+        if (audioId.length() > 19){
+            audioId = audioId.substring(0, 20) + "...";
+        }
+        sendOverlayMessage(Component.translatable("sysmsg.disx.loading_media", audioId).withStyle(ChatFormatting.ITALIC), false);
     }
 
-    public static void loadingVideo(String videoId){
-        sendOverlayMessage(Component.literal("Loading Video '" + videoId + "'").withStyle(ChatFormatting.ITALIC), false);
-    }
-
-    public static void playingVideo(String videoId){
-        Minecraft.getInstance().gui.setNowPlaying(Component.translatable("sysmsg.disx.playing_video", videoId));
+    public static void playingMedia(String audioId){
+        if (audioId.length() > 19){
+            audioId = audioId.substring(0, 20) + "...";
+        }
+        Minecraft.getInstance().gui.setNowPlaying(Component.translatable("sysmsg.disx.playing_media", audioId));
     }
 
     public static void sendOverlayMessage(MutableComponent mutableComponent, boolean animated){

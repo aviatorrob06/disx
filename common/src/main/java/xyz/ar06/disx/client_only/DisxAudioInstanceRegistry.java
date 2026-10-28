@@ -5,6 +5,7 @@ import xyz.ar06.disx.*;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
+import xyz.ar06.disx.exceptions.DisxMalformedAudioPacketException;
 
 import java.util.*;
 
@@ -37,8 +38,7 @@ public class DisxAudioInstanceRegistry {
                 registry.remove(toRemove);
             }
         } catch (ConcurrentModificationException e){
-            DisxLogger.error("Encountered error in request to remove audio instance:");
-            e.printStackTrace();
+            DisxLogger.error("Encountered error in request to remove audio instance:" + e);
         }
 
     }
@@ -57,8 +57,7 @@ public class DisxAudioInstanceRegistry {
                 registry.remove(toRemove);
             }
         } catch (ConcurrentModificationException e){
-            DisxLogger.error("Encountered error in request to remove audio instance:");
-            e.printStackTrace();
+            DisxLogger.error("Encountered error in request to remove audio instance:" + e);
         }
 
     }
@@ -80,8 +79,7 @@ public class DisxAudioInstanceRegistry {
                 }
             }
         } catch (ConcurrentModificationException e){
-            DisxLogger.error("Encountered error in request to remove audio instance:");
-            e.printStackTrace();
+            DisxLogger.error("Encountered error in request to remove audio instance:" + e);
         }
     }
 
@@ -100,8 +98,7 @@ public class DisxAudioInstanceRegistry {
                 }
             }
         } catch (ConcurrentModificationException e){
-            DisxLogger.error("Encountered error in request to remove audio instance:");
-            e.printStackTrace();
+            DisxLogger.error("Encountered error in request to remove audio instance:" + e);
         }
     }
 
@@ -135,7 +132,7 @@ public class DisxAudioInstanceRegistry {
 
     public static void routeAudioData(ByteBuf buf, BlockPos blockPos, ResourceLocation dimension, UUID entityUuid, DisxAudioMotionType motionType){
         if (!buf.isReadable()){
-            DisxLogger.error("No readable data found in received audio data packet!");
+            DisxLogger.error(new DisxMalformedAudioPacketException("No readable data detected in packet buffer!"));
             return;
         }
         try {
@@ -159,8 +156,7 @@ public class DisxAudioInstanceRegistry {
                 }
             }
         } catch (ConcurrentModificationException e){
-            DisxLogger.error("Encountered error in request to route audio data to audio instance:");
-            e.printStackTrace();
+            DisxLogger.error("Encountered error in request to route audio data to audio instance:" + e);
         }
     }
 

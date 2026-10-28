@@ -18,6 +18,6 @@ public final class DisxAudioFormatConstants {
             bitDepth,       // sample size in bits
             channelCount,        // channels
             true,     // signed
-            true      // big-endian
+            false      // big-endian
     );
 }

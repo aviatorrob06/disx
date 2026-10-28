@@ -1,11 +1,11 @@
 package xyz.ar06.disx.commands;
 
 import xyz.ar06.disx.DisxLogger;
+import xyz.ar06.disx.exceptions.*;
 import xyz.ar06.disx.utils.*;
 import xyz.ar06.disx.DisxMain;
 import xyz.ar06.disx.DisxSystemMessages;
 import xyz.ar06.disx.commands.suggestionProviders.DisxTypeSuggestionProvider;
-import xyz.ar06.disx.config.DisxConfigHandler;
 import xyz.ar06.disx.items.DisxCustomDisc;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
@@ -26,7 +26,6 @@ import net.minecraft.world.item.ItemStack;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 
@@ -40,7 +39,7 @@ public class DisxGenCommand {
                     .requires(commandSourceStack -> commandSourceStack.hasPermission(2))
                             .then(Commands.argument("player", EntityArgument.players())
                                     .then(Commands.argument("discType", StringArgumentType.string()).suggests(DisxTypeSuggestionProvider::getSuggestions)
-                                            .then(Commands.argument("videoId", StringArgumentType.string())
+                                            .then(Commands.argument("audioUrl", StringArgumentType.greedyString())
                                                     .executes(DisxGenCommand::run)))));
         ;}));
     }
@@ -60,11 +59,11 @@ public class DisxGenCommand {
 
     private static void runAsync(CommandContext<CommandSourceStack> context){
         String argumentResult = context.getArgument("discType", String.class);
-        String videoId = context.getArgument("videoId", String.class);
+        String videoId = context.getArgument("audioUrl", String.class);
         try {
             boolean hasInternet = DisxInternetCheck.checkInternet();
             if (!hasInternet){
-                throw new Exception("No Internet Connection");
+                throw new DisxNoInternetException("No internet detected!");
             }
             boolean validDisc = false;
             for (String element : DisxCustomDisc.validTypes) {
@@ -73,7 +72,7 @@ public class DisxGenCommand {
                 }
             }
             if (!validDisc){
-                throw new Exception("Invalid Disc Type");
+                throw new DisxInvalidDiscTypeException("Given Type: " + argumentResult);
             }
             Item disc = DisxMain.REGISTRAR_MANAGER.get().get(Registries.ITEM).get(new ResourceLocation("disx", "custom_disc_" + argumentResult));
             ItemStack stack = disc.getDefaultInstance();
@@ -88,15 +87,12 @@ public class DisxGenCommand {
             //Response<VideoInfo> videoInfoResponse = null;
             //DisxLogger.debug("videoInfoResponse initialized");
             //videoInfoResponse = ytDownloader.getVideoInfo(videoInfoRequest);
-            ArrayList<String> title_and_length = DisxYoutubeResolver.scrapeLengthAndTitle(videoId);
-            if (title_and_length == null){
-                throw new Exception("Video Not Found");
-            }
-            String videoTitle = title_and_length.get(0);
-            int videoLength = Integer.valueOf(title_and_length.get(1));
+            DisxWWW2PCMReference www2PCMReference = new DisxWWW2PCMReference(videoId);
+            String videoTitle = www2PCMReference.probeTitle();
+            int videoLength = www2PCMReference.probeDuration();
             DisxLogger.debug("video length is " + videoLength);
             if (videoLength > 1800) {
-                throw new Exception("Too Long");
+                throw new DisxTooLongException("Duration: " + videoLength);
             }
             stackNbt.putString("discName", videoTitle);
             stack.setTag(stackNbt);
@@ -107,34 +103,51 @@ public class DisxGenCommand {
             }
             context.getSource().sendSystemMessage(Component.translatable("sysmsg.disx.gencmd.success"));
             DisxLogger.debug("success??..." + "custom_disc_" + argumentResult);
-        } catch (Exception e) {
-            if (e.getMessage().equals("Video Not Found")) {
+        } catch (DisxNoInternetException e){
+            if (context.getSource().isPlayer()){
+                DisxSystemMessages.noMediaFound(context.getSource().getPlayer());
+            } else {
+                DisxSystemMessages.noMediaFound(context.getSource().getServer());
+            }
+            DisxLogger.error(e);
+        } catch (DisxWWW2PCMException e){
+            if (e.wasResourceNotFound()){
                 if (context.getSource().isPlayer()){
-                    DisxSystemMessages.noVideoFound(context.getSource().getPlayer());
+                    DisxSystemMessages.noMediaFound(context.getSource().getPlayer());
                 } else {
-                    DisxSystemMessages.noVideoFound(context.getSource().getServer());
-                }
-            } else if (e.getMessage().equals("No Internet Connection")) {
-                if (context.getSource().isPlayer()){
-                    DisxSystemMessages.noInternetErrorMessage(context.getSource().getPlayer());
-                } else {
-                    DisxSystemMessages.noInternetErrorMessage(context.getSource().getServer());
-                }
-            } else if (e.getMessage().equals("Invalid Disc Type")){
-                if (context.getSource().isPlayer()){
-                    DisxSystemMessages.invalidDiscType(context.getSource().getPlayer());
-                } else {
-                    DisxSystemMessages.invalidDiscType(context.getSource().getServer());
-                }
-            } else if (e.getMessage().equals("Too Long")){
-                if (context.getSource().isPlayer()){
-                    DisxSystemMessages.badDuration(context.getSource().getPlayer());
-                } else {
-                    DisxSystemMessages.badDuration(context.getSource().getServer());
+                    DisxSystemMessages.noMediaFound(context.getSource().getServer());
                 }
             } else {
-                DisxLogger.debug(e.getMessage() + e.getCause());
+                if (context.getSource().isPlayer()){
+                    DisxSystemMessages.apiError(context.getSource().getPlayer());
+                } else {
+                    DisxSystemMessages.apiError(context.getSource().getServer());
+                }
             }
+            DisxLogger.error(e);
+        } catch (DisxInvalidDiscTypeException e){
+            if (context.getSource().isPlayer()){
+                DisxSystemMessages.invalidDiscType(context.getSource().getPlayer());
+            } else {
+                DisxSystemMessages.invalidDiscType(context.getSource().getServer());
+            }
+            DisxLogger.error(e);
+        } catch (DisxTooLongException e){
+            if (context.getSource().isPlayer()){
+                DisxSystemMessages.badDuration(context.getSource().getPlayer());
+            } else {
+                DisxSystemMessages.badDuration(context.getSource().getServer());
+            }
+            DisxLogger.error(e);
+        } catch (DisxMalformedURLException e){
+            if (context.getSource().isPlayer()){
+                DisxSystemMessages.badURL(context.getSource().getPlayer());
+            } else {
+                DisxSystemMessages.badURL(context.getSource().getServer());
+            }
+            DisxLogger.error(e);
+        } catch (Exception e){
+            DisxLogger.error(e);
         }
     }
 

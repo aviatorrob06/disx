@@ -53,8 +53,7 @@ public class DisxAudioInstance {
         try {
             ClientTickEvent.CLIENT_LEVEL_POST.register(this::loops);
         } catch (ConcurrentModificationException e){
-            DisxLogger.error("Error registering writing and volume loops:");
-            e.printStackTrace();
+            DisxLogger.error(e);
         }
         DisxLogger.debug("DisxAudioInstance initialized successfully!");
     }
@@ -70,8 +69,7 @@ public class DisxAudioInstance {
             //ClientTickEvent.CLIENT_POST.unregister(this::loops);
             ClientTickEvent.CLIENT_LEVEL_POST.unregister(this::loops);
         } catch (ConcurrentModificationException e){
-            DisxLogger.error("Error deregistering writing and volume loops:");
-            e.printStackTrace();
+            DisxLogger.error(e);
         }
         destroyLine();
         this.blockPos = null;
@@ -246,7 +244,7 @@ public class DisxAudioInstance {
                                         Minecraft.getInstance().getMusicManager().tick();
                                         musicManager.stopPlaying();
                                     } catch (NullPointerException e) {
-                                        DisxLogger.error("Audio Instance at " + blockPos + " was unsuccessful in pausing client music. Error: " + e);
+                                        DisxLogger.error("Audio Instance at " + blockPos + " was unsuccessful in pausing client music, got NullPointerException:" + e);
                                     }
                                 }
                             } else {

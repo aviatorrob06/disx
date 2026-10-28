@@ -70,14 +70,15 @@ public class DisxConfigHandler {
                 e.printStackTrace();
             }
             updateConfig();
-            DisxModInfo.setDEBUG(Boolean.parseBoolean(properties.getProperty("debug_mode")));
+            DisxModInfo.setDEBUG(Boolean.parseBoolean(properties.getProperty("debug_mode", "false")));
             //DisxModInfo.setUseYtsrc(Boolean.parseBoolean(properties.getProperty("use_live_ytsrc")));
             //DisxModInfo.setRefreshToken(properties.getProperty("refresh_token"));
-            DisxModInfo.setAudioRadius(Integer.parseInt(properties.getProperty("audio_radius")));
-            DisxModInfo.setSoundParticles(Boolean.parseBoolean(properties.getProperty("sound_particles")));
-            DisxModInfo.setWww2pcmURL(String.valueOf(properties.getProperty("www2pcm_target")));
-            DisxModInfo.setDirectUrlEnabled(Boolean.parseBoolean(properties.getProperty("direct_url_enabled")));
-            DisxModInfo.setCacheMaxSize(Integer.parseInt(properties.getProperty("cache_files_max_size")));
+            DisxModInfo.setAudioRadius(Integer.parseInt(properties.getProperty("audio_radius", "25")));
+            DisxModInfo.setSoundParticles(Boolean.parseBoolean(properties.getProperty("sound_particles", "true")));
+            DisxModInfo.setWww2pcmURL(String.valueOf(properties.getProperty("www2pcm_target", "default")));
+            DisxModInfo.setDirectUrlEnabled(Boolean.parseBoolean(properties.getProperty("direct_url_enabled", "false")));
+            DisxModInfo.setCacheMaxSize(Integer.parseInt(properties.getProperty("cache_files_max_size", "5")));
+
 
             //JSON Check/Create/Initialization
             //Player Use Whitelist JSON
@@ -194,7 +195,7 @@ public class DisxConfigHandler {
             if (config_version < 5){
                 updateProperty("www2pcm_target", "default");
                 updateProperty("direct_url_enabled", "false");
-                updateProperty("cache_files_max_size","5");
+                updateProperty("cache_files_max_size", "5");
                 updateProperty("config_version", "5");
             }
         }
@@ -212,7 +213,7 @@ public class DisxConfigHandler {
             DisxModInfo.setAudioRadius(Integer.parseInt(properties.getProperty("audio_radius", "25")));
             DisxModInfo.setWww2pcmURL(String.valueOf(properties.getProperty("www2pcm_target")));
             DisxModInfo.setDirectUrlEnabled(Boolean.parseBoolean(properties.getProperty("direct_url_enabled")));
-            DisxModInfo.setCacheMaxSize(Integer.parseInt(properties.getProperty("cache_files_max_size")));
+            DisxModInfo.setCacheMaxSize(Integer.parseInt(properties.getProperty("cache_files_max_size", "5")));
             DisxServerPacketIndex.ServerPackets.serverConfigSendAll();
             updateConfigFile();
         }

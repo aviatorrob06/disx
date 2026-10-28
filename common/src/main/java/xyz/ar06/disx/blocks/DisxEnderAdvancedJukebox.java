@@ -22,7 +22,6 @@ import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.*;
 import net.minecraft.world.level.block.state.BlockBehaviour;
@@ -32,13 +31,10 @@ import xyz.ar06.disx.*;
 import xyz.ar06.disx.audio_filters.DisxAudioFilterType;
 import xyz.ar06.disx.config.DisxConfigHandler;
 import xyz.ar06.disx.enchantments.DisxDiscEnchantmentHelper;
-import xyz.ar06.disx.enchantments.DisxRetrogradeCurseEnchantment;
-import xyz.ar06.disx.enchantments.DisxTempoEnchantment;
 import xyz.ar06.disx.items.DisxCustomDisc;
 import xyz.ar06.disx.utils.*;
 
 import java.util.ArrayList;
-import java.util.concurrent.CompletableFuture;
 
 public class DisxEnderAdvancedJukebox extends Block{
     protected DisxEnderAdvancedJukebox(Properties properties) {
@@ -79,10 +75,17 @@ public class DisxEnderAdvancedJukebox extends Block{
                                 handStackTag.putString("discName", handStack.getHoverName().getString());
                                 handStack.setTag(handStackTag);
                             }
+                            //legacy YT-Only source compatibility
+                            if (!videoId.contains("http")){
+                                videoId = "https://www.youtube.com/watch?v=" + videoId;
+                                handStackTag.putString("videoId", videoId);
+                                handStack.setTag(handStackTag);
+                            }
+                            DisxWWW2PCMReference www2PCMReference = new DisxWWW2PCMReference(videoId);
                             invList.set(0, handStack.copyWithCount(1));
                             DisxJukeboxUsageCooldownManager.updateCooldown(blockPos, level.dimension());
                             DisxLogger.debug("Sending loading video message");
-                            DisxServerPacketIndex.ServerPackets.loadingVideoIdMessage(videoId, player);
+                            DisxServerPacketIndex.ServerPackets.loadingAudioIdMessage(www2PCMReference.getIdentifier(), player);
                             DisxLogger.debug("Checking for any active audio filters");
                             ArrayList<DisxAudioFilterType> audioFilters = DisxDiscEnchantmentHelper.buildAudioFilterArray(handStack);
                             DisxLogger.debug("Calling add to registry (LIVE)");
@@ -90,7 +93,7 @@ public class DisxEnderAdvancedJukebox extends Block{
                             helper.disx$setEnderAdvancedJukeboxInventory(ContainerHelper.saveAllItems(new CompoundTag(), invList));
                             handStack.shrink(1);
                             level.playSound(null, blockPos, SoundEvents.ENDER_EYE_LAUNCH, SoundSource.BLOCKS, 1.0F, 1.0F);
-                            CompletableFuture.runAsync(() -> tryGetUpdatedDiscName(player));
+                            //CompletableFuture.runAsync(() -> tryGetUpdatedDiscName(player));
                         }
                     } else {
                         DisxJukeboxUsageCooldownManager.updateCooldown(blockPos, level.dimension());
@@ -135,7 +138,7 @@ public class DisxEnderAdvancedJukebox extends Block{
         return super.use(blockState, level, blockPos, player, interactionHand, blockHitResult);
     }
 
-    public void tryGetUpdatedDiscName(Player player){
+    @Deprecated public void tryGetUpdatedDiscName(Player player){
         NonNullList<ItemStack> itemInventory = NonNullList.withSize(1, ItemStack.EMPTY);
         if (player instanceof DisxEnderAdvancedJukeboxInventoryHelper helper){
             ContainerHelper.loadAllItems(helper.disx$getEnderAdvancedJukeboxInventory(), itemInventory);

@@ -2,7 +2,6 @@ package xyz.ar06.disx;
 
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.phys.Vec3;
-import xyz.ar06.disx.audio_filters.DisxAudioFilterType;
 import xyz.ar06.disx.entities.DisxStampMakerEntity;
 import dev.architectury.networking.NetworkManager;
 import io.netty.buffer.Unpooled;
@@ -16,9 +15,6 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
 import java.util.UUID;
 
 public class DisxServerPacketIndex {
@@ -26,7 +22,7 @@ public class DisxServerPacketIndex {
     public static void registerServerPacketReceivers(){
         //NetworkManager.registerReceiver(NetworkManager.Side.C2S, new ResourceLocation("disx","playersuccessstatus"), (ServerPacketReceivers::onPlayerSuccessStatusReceive));
         NetworkManager.registerReceiver(NetworkManager.Side.C2S, new ResourceLocation("disx","retrieveserveraudioregistry"), ((ServerPacketReceivers::onPlayerRegistryRequest)));
-        NetworkManager.registerReceiver(NetworkManager.Side.C2S, new ResourceLocation("disx","videoidselection"), ServerPacketReceivers::onVideoIdPushRequest);
+        NetworkManager.registerReceiver(NetworkManager.Side.C2S, new ResourceLocation("disx","mediaurlselection"), ServerPacketReceivers::onMediaUrlPushRequest);
         NetworkManager.registerReceiver(NetworkManager.Side.C2S, new ResourceLocation("disx","singleplayertrackend"), ServerPacketReceivers::onSingleplayerTrackEnd);
         NetworkManager.registerReceiver(NetworkManager.Side.C2S, new ResourceLocation("disx","scrolledcheckhit"), ServerPacketReceivers::onScrolledHitCheck);
         NetworkManager.registerReceiver(NetworkManager.Side.C2S, new ResourceLocation("disx","requestconfiginfo"), ServerPacketReceivers::onServerConfigRequest);
@@ -34,17 +30,17 @@ public class DisxServerPacketIndex {
 
     public class ServerPacketReceivers {
 
-        public static void onPlayerSuccessStatusReceive(FriendlyByteBuf buf, NetworkManager.PacketContext context) {
+        @Deprecated public static void onPlayerSuccessStatusReceive(FriendlyByteBuf buf, NetworkManager.PacketContext context) {
             Logger logger = LoggerFactory.getLogger("disx");
             DisxLogger.debug("got packet");
             String status = buf.readUtf();
             BlockPos blockPos = buf.readBlockPos();
-            String videoId = buf.readUtf();
+            String mediaUrl = buf.readUtf();
             Boolean fromSoundCommand = buf.readBoolean();
             Boolean playerCanHear = buf.readBoolean();
             Player player = context.getPlayer();
             if (status.equals("Video Not Found") && (fromSoundCommand.equals(true) || playerCanHear.equals(true))){
-                DisxSystemMessages.noVideoFound(player);
+                DisxSystemMessages.noMediaFound(player);
             }
             if (status.equals("Failed") && (fromSoundCommand.equals(true) || playerCanHear.equals(true))){
                 DisxSystemMessages.errorLoading(player);
@@ -73,8 +69,8 @@ public class DisxServerPacketIndex {
             }
         }
 
-        public static void onVideoIdPushRequest(FriendlyByteBuf buf, NetworkManager.PacketContext context){
-            String videoId = buf.readUtf();
+        public static void onMediaUrlPushRequest(FriendlyByteBuf buf, NetworkManager.PacketContext context){
+            String mediaUrl = buf.readUtf();
             BlockPos blockPos = buf.readBlockPos();
             MinecraftServer server = context.getPlayer().getServer();
             server.executeIfPossible(() -> {
@@ -84,8 +80,8 @@ public class DisxServerPacketIndex {
                } else {
                    DisxLogger.debug("ENTITY IS NOT NULL");
                    if (entity instanceof DisxStampMakerEntity){
-                       ((DisxStampMakerEntity) entity).setVideoId(videoId, context.getPlayer());
-                       DisxLogger.debug("SET VIDEO ID TO " + videoId);
+                       ((DisxStampMakerEntity) entity).setMediaUrl(mediaUrl, context.getPlayer());
+                       DisxLogger.debug("SET MEDIA URL TO " + mediaUrl);
                    }
                }
             });
@@ -162,29 +158,29 @@ public class DisxServerPacketIndex {
             }
         }
 
-        public static void playingVideoIdMessage(String videoId, Player player){
+        public static void playingAudioMessage(String mediaUrl, Player player){
             if (player != null){
                 FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
-                buf.writeUtf(videoId);
-                DisxLogger.debug("Sent playing vid msg packet");
-                NetworkManager.sendToPlayer((ServerPlayer) player, new ResourceLocation("disx","playingvidmsg"), buf);
+                buf.writeUtf(mediaUrl);
+                DisxLogger.debug("Sent playing msg packet");
+                NetworkManager.sendToPlayer((ServerPlayer) player, new ResourceLocation("disx","playingmediamsg"), buf);
             } else {
                 DisxLogger.debug("Player to send playing message to is null");
             }
         }
 
-        public static void loadingVideoIdMessage(String videoId, Player player){
+        public static void loadingAudioIdMessage(String mediaId, Player player){
             FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
-            buf.writeUtf(videoId);
-            NetworkManager.sendToPlayer((ServerPlayer) player, new ResourceLocation("disx","loadingvidmsg"), buf);
+            buf.writeUtf(mediaId);
+            NetworkManager.sendToPlayer((ServerPlayer) player, new ResourceLocation("disx","loadingmediamsg"), buf);
         }
 
-        public static void openVideoIdScreen(Player player, BlockPos blockPos){
+        public static void openMediaUrlScreen(Player player, BlockPos blockPos){
             FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
             buf.writeBlockPos(blockPos);
             NetworkManager.sendToPlayer(
                     (ServerPlayer) player,
-                    new ResourceLocation("disx","openvideoidscreen"),
+                    new ResourceLocation("disx","openmediaurlscreen"),
                     buf
             );
         }

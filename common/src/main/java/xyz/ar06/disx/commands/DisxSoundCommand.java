@@ -3,6 +3,10 @@ package xyz.ar06.disx.commands;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import xyz.ar06.disx.audio_filters.DisxAudioFilterType;
 import xyz.ar06.disx.DisxLogger;
+import xyz.ar06.disx.exceptions.DisxAudioPosOccupiedException;
+import xyz.ar06.disx.exceptions.DisxMalformedURLException;
+import xyz.ar06.disx.exceptions.DisxNoInternetException;
+import xyz.ar06.disx.exceptions.DisxWWW2PCMException;
 import xyz.ar06.disx.utils.DisxInternetCheck;
 import xyz.ar06.disx.DisxServerAudioRegistry;
 import xyz.ar06.disx.DisxSystemMessages;
@@ -19,7 +23,7 @@ import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import xyz.ar06.disx.utils.DisxYoutubeResolver;
+import xyz.ar06.disx.utils.DisxWWW2PCMReference;
 
 import java.util.ArrayList;
 import java.util.concurrent.CompletableFuture;
@@ -30,7 +34,7 @@ public class DisxSoundCommand {
         CommandRegistrationEvent.EVENT.register(((dispatcher, registry, selection) -> {
             LiteralCommandNode<CommandSourceStack> register = dispatcher.register(Commands.literal("disxsound")
                     .requires(commandSourceStack -> commandSourceStack.hasPermission(2))
-                    .then(Commands.argument("videoId", StringArgumentType.string())
+                    .then(Commands.argument("audioUrl", StringArgumentType.greedyString())
                             .then(Commands.argument("dimension", DimensionArgument.dimension())
                                     .then(Commands.argument("position", BlockPosArgument.blockPos())
                                             .then(Commands.argument("startTime", IntegerArgumentType.integer())
@@ -72,7 +76,7 @@ public class DisxSoundCommand {
 
     private static void runAsync(CommandContext<CommandSourceStack> context){
         try {
-            String videoId = context.getArgument("videoId", String.class);
+            String videoId = context.getArgument("audioUrl", String.class);
             ResourceLocation dimension = context.getArgument("dimension", ResourceLocation.class);
             BlockPos blockPos = BlockPosArgument.getBlockPos(context, "position");
             Integer startTime = context.getArgument("startTime", Integer.class);
@@ -83,12 +87,13 @@ public class DisxSoundCommand {
             DisxLogger.debug("START TIME PROVIDED: " + startTime);
             boolean hasInternet = DisxInternetCheck.checkInternet();
             if (!hasInternet){
-                throw new Exception("No Internet Connection");
+                throw new DisxNoInternetException("No Internet Detected!");
             }
             if (DisxServerAudioRegistry.isNodeAtLocation(blockPos, dimension)){
-                throw new Exception("Audio At Location");
+                throw new DisxAudioPosOccupiedException("Already audio playing at this block pos!");
             }
-            int videoLength = DisxYoutubeResolver.scrapeLengthInSeconds(videoId);
+            DisxWWW2PCMReference www2PCMReference = new DisxWWW2PCMReference(videoId);
+            int videoLength = www2PCMReference.probeDuration();
             if (videoLength == -1 && DisxConfigHandler.SERVER.getProperty("video_existence_check").equals("true")){
                 throw new Exception("Video Not Found");
             }
@@ -101,12 +106,37 @@ public class DisxSoundCommand {
                 DisxServerAudioRegistry.addToRegistry(blockPos, videoId, context.getSource().getPlayer(), context.getSource().getServer(), dimension, startTime.intValue(), loop, volumePercentage, rogueRadius, audioFilters);
             }
             context.getSource().sendSystemMessage(Component.translatable("sysmsg.disx.soundcmd.attempting_playback", videoId, blockPos.toString(), dimension.toString()));
-        } catch (Exception e){
+        } catch (DisxMalformedURLException e){
+            if (context.getSource().isPlayer()){
+                DisxSystemMessages.badURL(context.getSource().getPlayer());
+                DisxLogger.error(e);
+            } else {
+                DisxSystemMessages.badURL(context.getSource().getServer());
+                DisxLogger.error(e);
+            }
+        } catch (DisxWWW2PCMException e){
+            if (e.wasResourceNotFound()){
+                if (context.getSource().isPlayer()){
+                    DisxSystemMessages.noMediaFound(context.getSource().getPlayer());
+                } else {
+                    DisxSystemMessages.noMediaFound(context.getSource().getServer());
+                }
+            } else {
+                if (context.getSource().isPlayer()){
+                    DisxSystemMessages.apiError(context.getSource().getPlayer());
+                } else {
+                    DisxSystemMessages.apiError(context.getSource().getServer());
+                }
+            }
+            DisxLogger.error(e);
+        }
+
+        catch (Exception e){
             if (e.getMessage().equals("Video Not Found")) {
                 if (context.getSource().isPlayer()){
-                    DisxSystemMessages.noVideoFound(context.getSource().getPlayer());
+                    DisxSystemMessages.noMediaFound(context.getSource().getPlayer());
                 } else {
-                    DisxSystemMessages.noVideoFound(context.getSource().getServer());
+                    DisxSystemMessages.noMediaFound(context.getSource().getServer());
                 }
             }
             if (e.getMessage().equals("No Internet Connection")) {

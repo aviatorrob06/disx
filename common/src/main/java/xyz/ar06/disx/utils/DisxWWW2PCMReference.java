@@ -4,6 +4,9 @@ import org.json.JSONObject;
 import xyz.ar06.disx.DisxLogger;
 import xyz.ar06.disx.DisxModInfo;
 import xyz.ar06.disx.DisxTmpHandler;
+import xyz.ar06.disx.exceptions.DisxException;
+import xyz.ar06.disx.exceptions.DisxMalformedURLException;
+import xyz.ar06.disx.exceptions.DisxWWW2PCMException;
 
 import java.io.File;
 import java.io.IOException;
@@ -18,7 +21,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
+import java.util.HexFormat;
 import java.util.Locale;
 
 public class DisxWWW2PCMReference {
@@ -27,12 +33,16 @@ public class DisxWWW2PCMReference {
     private String apiAccessUrl;
     private DisxWWW2PCMSourceType service;
     private String identifier;
+    private String hashedFileName;
+    private JSONObject cachedMetadata;
 
-    public DisxWWW2PCMReference(String url){
+    public DisxWWW2PCMReference(String url) throws DisxWWW2PCMException, DisxMalformedURLException {
         this.mediaUrl = url;
         this.apiAccessUrl = DisxModInfo.getWww2pcmURL();
 
         parseUrl();
+
+        this.hashedFileName = hashUrl(this.mediaUrl);
     }
 
     private void parseUrl(){
@@ -150,10 +160,12 @@ public class DisxWWW2PCMReference {
             // Replace this condition with your actual config setting.
             if (DisxModInfo.isDirectUrlEnabled()) {
                 setReference(DisxWWW2PCMSourceType.DIRECT, uri.toASCIIString());
+            } else {
+                throw new DisxMalformedURLException("Direct URL not enabled on this server!");
             }
 
         } catch (IllegalArgumentException | URISyntaxException e) {
-            // Malformed URL; leave the reference INVALID.
+            throw new DisxMalformedURLException(e.getMessage());
         }
     }
 
@@ -217,7 +229,7 @@ public class DisxWWW2PCMReference {
         String reqUrl = this.apiAccessUrl + this.service.getValue() + "/pcm?" + apiArg + "=" + this.identifier;
         try {
             DisxLogger.debug("Audio file resolve requested. Checking tmp directory caches");
-            String expectedFilePath = "./.disx-tmp/cache/" + this.service.getValue() + "_" + this.identifier + ".pcm";
+            String expectedFilePath = "./.disx-tmp/cache/" + this.hashedFileName +".pcm";
             File returnFile = new File(expectedFilePath);
             if (returnFile.exists()){
                 Thread.sleep(1000); //sleep for a second to ensure most clients got their audio lines ready for data streaming
@@ -236,15 +248,19 @@ public class DisxWWW2PCMReference {
                     .build();
             HttpResponse<InputStream> response = httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
             if (response.statusCode() == 200){
-                DisxLogger.debug("Got response from WWW2PCM-API. Downloading audio...");
+                DisxLogger.debug("Got response from WWW2PCM-API. Checking for errors.");
+
+                JSONObject jsonObject = new JSONObject(response.body());
+                if (!jsonObject.isEmpty()){
+                    throw new DisxWWW2PCMException(jsonObject.getJSONObject("detail").getString("error"), response.statusCode(), true);
+                }
+                DisxLogger.debug("No errors found. Downloading audio...");
                 InputStream in = response.body();
                 File newFile = new File(expectedFilePath);
                 Files.copy(in, Path.of(expectedFilePath), StandardCopyOption.REPLACE_EXISTING);
                 return newFile;
             } else {
-                DisxLogger.error("Disx Error: WWW2PCM-API response failed. Status Code: " + response.statusCode());
-                DisxLogger.error(response.body());
-                return null;
+                throw new DisxWWW2PCMException("Error in API response", response.statusCode());
             }
 
         } catch (Exception e){
@@ -262,8 +278,11 @@ public class DisxWWW2PCMReference {
             case DIRECT -> "url";
             case INVALID -> null;
         };
+        if (cachedMetadata != null){
+            return cachedMetadata;
+        }
         if (this.service.equals(DisxWWW2PCMSourceType.INVALID)){
-            throw new RuntimeException("INVALID URL");
+            throw new DisxMalformedURLException("Malformed URL!");
         }
         String reqUrl = this.apiAccessUrl + this.service.getValue() + "/metadata?" + apiArg + "=" + this.identifier;
         DisxLogger.debug("REQ URL: " + reqUrl);
@@ -275,11 +294,15 @@ public class DisxWWW2PCMReference {
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             if (response.statusCode() == 200){
                 JSONObject jsonObject = new JSONObject(response.body());
+                if (jsonObject.has("detail")){
+                    if (jsonObject.getJSONObject("detail").has("error")){
+                        throw new DisxWWW2PCMException(jsonObject.getJSONObject("detail").getString("error"), response.statusCode(), true);
+                    }
+                }
+                cachedMetadata = jsonObject;
                 return jsonObject;
             } else {
-                DisxLogger.error("Disx Error: WWW2PCM-API metadata response failed. Status Code: " + response.statusCode());
-                DisxLogger.error(response.body());
-                throw new RuntimeException(response.body());
+                throw new DisxWWW2PCMException("Error in API response", response.statusCode());
             }
 
         } catch (IOException e) {
@@ -289,23 +312,39 @@ public class DisxWWW2PCMReference {
         }
     }
 
-    public String probeTitle(){
-        try {
-            JSONObject metadata = resolveMetadata();
+    public String probeTitle() throws DisxWWW2PCMException{
+        JSONObject metadata = resolveMetadata();
+        if (metadata.has("title")){
             String title = metadata.getString("title");
             return title;
-        } catch (RuntimeException e){
-            return "Video Not Found";
+        } else {
+            return "null";
         }
     }
 
-    public int probeDuration(){
+    public int probeDuration() throws DisxWWW2PCMException{
+        JSONObject metadata = resolveMetadata();
+        Number duration = metadata.getNumber("duration");
+        return duration.intValue();
+    }
+
+    public String getHashedFileName() {
+        return hashedFileName;
+    }
+
+    private static String hashUrl(String url) {
+        if (url == null || url.isBlank()) {
+            throw new IllegalArgumentException("URL cannot be null or blank");
+        }
+
         try {
-            JSONObject metadata = resolveMetadata();
-            int duration = metadata.getInt("duration");
-            return duration;
-        } catch (RuntimeException e){
-            return -1;
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(url.getBytes(StandardCharsets.UTF_8));
+
+            return HexFormat.of().formatHex(hash);
+        } catch (NoSuchAlgorithmException e) {
+            // SHA-256 is required by Java, so this should never happen.
+            throw new IllegalStateException("SHA-256 is unavailable", e);
         }
     }
 

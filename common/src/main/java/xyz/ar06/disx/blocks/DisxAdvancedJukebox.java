@@ -40,8 +40,7 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import xyz.ar06.disx.utils.DisxWWW2PCMReference;
 
 import java.util.concurrent.CompletableFuture;
 
@@ -120,26 +119,37 @@ public class DisxAdvancedJukebox extends BaseEntityBlock {
                         DisxLogger.debug("[advanced jukebox] doesn't have record, putting it in");
                         debounce = true;
                         String discName = stack.getTag().getString("discName");
-                        String videoId = stack.getTag().getString("videoId");
+                        CompoundTag stackTag = stack.getTag();
                         //alpha discs compatibility
                         if (discName.isBlank() || discName.isEmpty()){
-                            CompoundTag updatedTag = stack.getTag();
-                            updatedTag.putString("discName", stack.getHoverName().getString());
-                            stack.setTag(updatedTag);
+                            stackTag.putString("discName", stack.getHoverName().getString());
+                            stack.setTag(stackTag);
                         }
+                        //legacy YT-Only source compatibility
+                        if (stackTag.contains("videoId")){
+                            String videoId = stack.getTag().getString("videoId");
+                            if (!videoId.contains("http")){
+                                videoId = "https://www.youtube.com/watch?v=" + videoId;
+                            }
+                            stackTag.putString("mediaUrl", videoId);
+                            stackTag.remove("videoId");
+                            stack.setTag(stackTag);
+                        }
+                        String mediaUrl = stackTag.getString("mediaUrl");
+                        DisxWWW2PCMReference www2PCMReference = new DisxWWW2PCMReference(mediaUrl);
                         //player.getCooldowns().addCooldown(item, 999999999);
                         ItemStack stackCopy = stack.copy();
                         stack.setCount(stack.getCount() - 1);
                         entity.setItem(0, stackCopy, player);
                         DisxJukeboxUsageCooldownManager.updateCooldown(blockPos, level.dimension());
-                        DisxServerPacketIndex.ServerPackets.loadingVideoIdMessage(videoId, player);
-                        DisxLogger.debug("[advanced jukebox] current has record value: " + entity.isHas_record());
+                        DisxServerPacketIndex.ServerPackets.loadingAudioIdMessage(www2PCMReference.getIdentifier(), player);
+                        DisxLogger.debug("current has record value: " + entity.isHas_record());
                         level.playSound(null, blockPos, SoundEvents.CHICKEN_EGG, SoundSource.BLOCKS, 1.0F, 1.0F);
                         debounce = false;
                         //player.getCooldowns().removeCooldown(item);
                         entity.setChanged();
                         //attempt to get the latest video title if disc was made with no proper title
-                        CompletableFuture.runAsync(() -> entity.tryGetUpdatedDiscName(player));
+                        //CompletableFuture.runAsync(() -> entity.tryGetUpdatedDiscName(player));
                         return InteractionResult.SUCCESS;
                     }
                 }

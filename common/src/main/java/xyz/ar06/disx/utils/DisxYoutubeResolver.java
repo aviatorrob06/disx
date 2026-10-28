@@ -17,7 +17,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.util.ArrayList;
-
+@Deprecated
 public class DisxYoutubeResolver {
     public static File resolveFile(String videoId){
         String apiURL = "https://disxytsourceapi.ar06.xyz/audio_pcm?id=";
