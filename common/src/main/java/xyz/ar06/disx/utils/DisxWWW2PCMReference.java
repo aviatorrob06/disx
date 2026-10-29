@@ -290,17 +290,24 @@ public class DisxWWW2PCMReference {
                             } else {
                                 throw new DisxWWW2PCMException("Error in API response", response.statusCode());
                             }
+                        } else if (response.statusCode() == 429){
+                            throw new DisxWWW2PCMException("Too many requests!", response.statusCode());
                         } else {
                             throw new DisxWWW2PCMException("Error in API response", response.statusCode());
                         }
                     }
                 } catch (IOException | InterruptedException e){
-                    throw new DisxWWW2PCMException(Arrays.toString(e.getStackTrace()));
+                    throw new DisxWWW2PCMException(e.getMessage(), e);
                 }
 
             }, www2PCMExecutor).get();
-        } catch (Exception e){
-            throw new DisxWWW2PCMException(Arrays.toString(e.getStackTrace()));
+        } catch (InterruptedException | ExecutionException e){
+            Throwable cause = e.getCause();
+            if (cause instanceof DisxWWW2PCMException www2PCMException){
+                throw www2PCMException;
+            } else {
+                throw new DisxWWW2PCMException(e.getMessage(), e);
+            }
         }
     }
 
@@ -347,18 +354,23 @@ public class DisxWWW2PCMReference {
                                 throw new DisxWWW2PCMException("Error in API response", response.statusCode());
                             }
                         } else if (response.statusCode() == 429){
-                            throw new DisxWWW2PCMException("Rate limit exceeded");
+                            throw new DisxWWW2PCMException("Rate limit exceeded", response.statusCode());
                         } else {
                             throw new DisxWWW2PCMException("Error in API response", response.statusCode());
                         }
                     }
 
                 } catch (IOException | InterruptedException e) {
-                    throw new DisxWWW2PCMException(Arrays.toString(e.getStackTrace()));
+                    throw new DisxWWW2PCMException(e.getMessage(), e);
                 }
             }, www2PCMExecutor).get();
         } catch (InterruptedException | ExecutionException e) {
-            throw new DisxWWW2PCMException(Arrays.toString(e.getStackTrace()));
+            Throwable cause = e.getCause();
+            if (cause instanceof DisxWWW2PCMException www2PCMException){
+                throw www2PCMException;
+            } else {
+                throw new DisxWWW2PCMException(e.getMessage(), e);
+            }
         }
     }
 

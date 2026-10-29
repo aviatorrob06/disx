@@ -26,7 +26,7 @@ public class DisxWWW2PCMException extends DisxException{
 
     @Override
     public String toString() {
-        return super.toString() + " (HTTP Status: " + statusCode + ")";
+        return super.toString() + " (HTTP Status Code: " + statusCode + ")";
     }
 
     public boolean wasInternalServerError(){
