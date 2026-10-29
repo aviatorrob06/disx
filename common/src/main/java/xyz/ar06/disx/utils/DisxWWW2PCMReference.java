@@ -282,7 +282,11 @@ public class DisxWWW2PCMReference {
                         if (response.statusCode() == 403){
                             JSONObject jsonObject = new JSONObject(response.body());
                             if (jsonObject.has("detail")){
-                                throw new DisxWWW2PCMException(jsonObject.getJSONObject("detail").getString("error"), response.statusCode(), true);
+                                if (jsonObject.getJSONObject("detail").has("error")){
+                                    throw new DisxWWW2PCMException(jsonObject.getJSONObject("detail").getString("error"));
+                                } else {
+                                    throw new DisxWWW2PCMException(jsonObject.getString("detail"), response.statusCode(), true);
+                                }
                             } else {
                                 throw new DisxWWW2PCMException("Error in API response", response.statusCode());
                             }
@@ -342,6 +346,8 @@ public class DisxWWW2PCMReference {
                             } else {
                                 throw new DisxWWW2PCMException("Error in API response", response.statusCode());
                             }
+                        } else if (response.statusCode() == 429){
+                            throw new DisxWWW2PCMException("Rate limit exceeded");
                         } else {
                             throw new DisxWWW2PCMException("Error in API response", response.statusCode());
                         }

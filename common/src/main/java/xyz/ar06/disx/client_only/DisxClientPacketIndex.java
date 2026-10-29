@@ -183,15 +183,6 @@ public class DisxClientPacketIndex  {
     }
 
     public class ClientPackets{
-        @Deprecated public static void playerSuccessStatus(String status, BlockPos blockPos, String mediaUrl, Boolean fromSoundCommand, Boolean playerCanHear){
-            FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
-            buf.writeUtf(status);
-            buf.writeBlockPos(blockPos);
-            buf.writeUtf(mediaUrl);
-            buf.writeBoolean(fromSoundCommand);
-            buf.writeBoolean(playerCanHear);
-            NetworkManager.sendToServer(new ResourceLocation("disx","playersuccessstatus"), buf);
-        }
 
         public static void getServerAudioRegistry(){
             FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());

@@ -1,5 +1,6 @@
 package xyz.ar06.disx.commands;
 
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import xyz.ar06.disx.DisxLogger;
 import xyz.ar06.disx.exceptions.*;
 import xyz.ar06.disx.utils.*;
@@ -88,13 +89,13 @@ public class DisxGenCommand {
             //DisxLogger.debug("videoInfoResponse initialized");
             //videoInfoResponse = ytDownloader.getVideoInfo(videoInfoRequest);
             DisxWWW2PCMReference www2PCMReference = new DisxWWW2PCMReference(videoId);
-            String videoTitle = www2PCMReference.probeTitle();
-            int videoLength = www2PCMReference.probeDuration();
-            DisxLogger.debug("video length is " + videoLength);
-            if (videoLength > 1800) {
-                throw new DisxTooLongException("Duration: " + videoLength);
+            String mediaTitle = www2PCMReference.probeTitle();
+            int mediaLength = www2PCMReference.probeDuration();
+            DisxLogger.debug("video length is " + mediaLength);
+            if (mediaLength > 1800) {
+                throw new DisxTooLongException("Duration: " + mediaLength);
             }
-            stackNbt.putString("discName", videoTitle);
+            stackNbt.putString("discName", mediaTitle);
             stack.setTag(stackNbt);
             Collection<ServerPlayer> playerCollection = EntityArgument.getPlayers(context, "player");
             for (ServerPlayer player : playerCollection){
@@ -103,51 +104,16 @@ public class DisxGenCommand {
             }
             context.getSource().sendSystemMessage(Component.translatable("sysmsg.disx.gencmd.success"));
             DisxLogger.debug("success??..." + "custom_disc_" + argumentResult);
-        } catch (DisxNoInternetException e){
+        } catch (DisxException e){
             if (context.getSource().isPlayer()){
-                DisxSystemMessages.noMediaFound(context.getSource().getPlayer());
+                DisxSystemMessages.disxError(context.getSource().getPlayer(), e);
             } else {
-                DisxSystemMessages.noMediaFound(context.getSource().getServer());
+                DisxSystemMessages.disxError(context.getSource().getServer(), e);
             }
             DisxLogger.error(e);
-        } catch (DisxWWW2PCMException e){
-            if (e.wasResourceNotFound()){
-                if (context.getSource().isPlayer()){
-                    DisxSystemMessages.noMediaFound(context.getSource().getPlayer());
-                } else {
-                    DisxSystemMessages.noMediaFound(context.getSource().getServer());
-                }
-            } else {
-                if (context.getSource().isPlayer()){
-                    DisxSystemMessages.apiError(context.getSource().getPlayer());
-                } else {
-                    DisxSystemMessages.apiError(context.getSource().getServer());
-                }
-            }
+        } catch (CommandSyntaxException e){
             DisxLogger.error(e);
-        } catch (DisxInvalidDiscTypeException e){
-            if (context.getSource().isPlayer()){
-                DisxSystemMessages.invalidDiscType(context.getSource().getPlayer());
-            } else {
-                DisxSystemMessages.invalidDiscType(context.getSource().getServer());
-            }
-            DisxLogger.error(e);
-        } catch (DisxTooLongException e){
-            if (context.getSource().isPlayer()){
-                DisxSystemMessages.badDuration(context.getSource().getPlayer());
-            } else {
-                DisxSystemMessages.badDuration(context.getSource().getServer());
-            }
-            DisxLogger.error(e);
-        } catch (DisxMalformedURLException e){
-            if (context.getSource().isPlayer()){
-                DisxSystemMessages.badURL(context.getSource().getPlayer());
-            } else {
-                DisxSystemMessages.badURL(context.getSource().getServer());
-            }
-            DisxLogger.error(e);
-        } catch (Exception e){
-            DisxLogger.error(e);
+            context.getSource().sendFailure(Component.literal(e.getMessage()));
         }
     }
 

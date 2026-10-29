@@ -30,26 +30,6 @@ public class DisxServerPacketIndex {
 
     public class ServerPacketReceivers {
 
-        @Deprecated public static void onPlayerSuccessStatusReceive(FriendlyByteBuf buf, NetworkManager.PacketContext context) {
-            Logger logger = LoggerFactory.getLogger("disx");
-            DisxLogger.debug("got packet");
-            String status = buf.readUtf();
-            BlockPos blockPos = buf.readBlockPos();
-            String mediaUrl = buf.readUtf();
-            Boolean fromSoundCommand = buf.readBoolean();
-            Boolean playerCanHear = buf.readBoolean();
-            Player player = context.getPlayer();
-            if (status.equals("Video Not Found") && (fromSoundCommand.equals(true) || playerCanHear.equals(true))){
-                DisxSystemMessages.noMediaFound(player);
-            }
-            if (status.equals("Failed") && (fromSoundCommand.equals(true) || playerCanHear.equals(true))){
-                DisxSystemMessages.errorLoading(player);
-            }
-            if (status.equals("Success") && (fromSoundCommand.equals(true))){
-                //DisxSystemMessages.playingAtLocation(player, blockPos, videoId);
-            }
-        }
-
         public static void onPlayerRegistryRequest(FriendlyByteBuf buf, NetworkManager.PacketContext context){
             String name = "retrieveserveraudioregistry";
             Player player = context.getPlayer();

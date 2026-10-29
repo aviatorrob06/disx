@@ -3,7 +3,6 @@ package xyz.ar06.disx;
 
 import com.google.common.io.Files;
 import io.netty.buffer.Unpooled;
-import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
@@ -14,6 +13,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
 import xyz.ar06.disx.audio_filters.*;
 import xyz.ar06.disx.exceptions.DisxAudioStreamingNodeException;
+import xyz.ar06.disx.exceptions.DisxException;
 import xyz.ar06.disx.exceptions.DisxMalformedURLException;
 import xyz.ar06.disx.exceptions.DisxWWW2PCMException;
 import xyz.ar06.disx.utils.DisxWWW2PCMReference;
@@ -47,8 +47,6 @@ public class DisxAudioStreamingNode {
                 return thread;
             });
 
-    //@Deprecated private AudioPlayer audioPlayer = new DefaultAudioPlayer(playerManager);
-    //private AudioInputStream inputStream = AudioPlayerInputStream.createStream(audioPlayer, LPformat, 20000, true);;
     private AudioInputStream inputStream;// = AudioPlayerInputStream.createStream(audioPlayer, LPformat, 20000, true);;
     private File audioFile;
 
@@ -62,7 +60,6 @@ public class DisxAudioStreamingNode {
 
     private int preferredVolume;
     private boolean paused = false;
-    @Deprecated boolean useLiveYtSrc = false;
     private int rogueRadius;
 
     private DisxAudioMotionType motionType;
@@ -79,7 +76,6 @@ public class DisxAudioStreamingNode {
         this.dimension = dimension;
         this.nodeOwner = nodeOwner;
         this.loop = loop;
-        //this.audioPlayer.addListener(new TrackHandler());
         this.preferredVolume = 100;
         this.motionType = motionType;
         this.entityUuid = entityUuid;
@@ -91,11 +87,7 @@ public class DisxAudioStreamingNode {
             DisxLogger.error(e);
             return;
         }
-        //this.useLiveYtSrc = true; //DisxModInfo.isUseYtsrc();
         CompletableFuture.runAsync(() -> {
-            //DisxLogger.debug(this.useLiveYtSrc ? "Server is configured to use live YouTube source; setting load URL" : "Server is configured to use Disx-YTSRC-API; setting load URL");
-            //String url = this.useLiveYtSrc ? "https://www.youtube.com/watch?v=" + videoId : "http://disxytsourceapi.ar06.xyz/stream_audio?id=" + videoId;
-
             try {
                 File audioFile = null;
                 if (!this.activeFilters.isEmpty()){
@@ -147,12 +139,8 @@ public class DisxAudioStreamingNode {
                 DisxLogger.debug("Starting data stream loop");
                 this.audioFile = audioFile;
                 DisxAudioStreamingNode.this.streamAudioData();
-            } catch (DisxWWW2PCMException e){
-                if (e.wasResourceNotFound()){
-                    DisxSystemMessages.noMediaFound(nodeOwner);
-                } else {
-                    DisxSystemMessages.apiError(nodeOwner);
-                }
+            } catch (DisxException e){
+                DisxSystemMessages.disxError(this.nodeOwner, e);
                 DisxLogger.error(e);
                 DisxServerAudioRegistry.removeFromRegistry(DisxAudioStreamingNode.this);
             } catch (IOException | InterruptedException e){

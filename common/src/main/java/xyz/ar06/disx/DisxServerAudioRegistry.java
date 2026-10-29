@@ -7,6 +7,9 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import xyz.ar06.disx.audio_filters.DisxAudioFilterType;
+import xyz.ar06.disx.config.DisxConfigHandler;
+import xyz.ar06.disx.exceptions.*;
+import xyz.ar06.disx.utils.DisxInternetCheck;
 
 import java.util.*;
 
@@ -267,6 +270,26 @@ public class DisxServerAudioRegistry {
                     DisxServerPacketIndex.ServerPackets.AudioRegistrySyncPackets.modifyPrefVolume(player, BlockPos.ZERO, new ResourceLocation("", ""), modifiedVol, DisxAudioMotionType.LIVE, entityUuid);
                 }
             }
+        }
+    }
+
+    public static void checkAudioPrerequisiteChecks(Player player, Level level){
+        if (!DisxInternetCheck.checkInternet()){
+            throw new DisxNoInternetException("No internet!");
+        }
+        if (DisxConfigHandler.SERVER.isOnUseBlacklist(player.getUUID())){
+            throw new DisxPlayerBlacklistedException("Player blacklisted!");
+        }
+        if (!DisxConfigHandler.SERVER.isOnUseWhitelist(player.getUUID())){
+            throw new DisxPlayerNotWhitelistedException("Player not on whitelist; use-whitelist is enabled!");
+        }
+        if (DisxConfigHandler.SERVER.isOnDimensionBlacklist(level.dimension())){
+            throw new DisxDimensionBlacklistedException("Dimension is blacklisted from audio-playing!");
+        }
+        int maxAudioPlayerCt = Integer.valueOf(DisxConfigHandler.SERVER.getProperty("max_audio_players"));
+        int currentAudioPlayerCt = DisxServerAudioRegistry.getRegistryCount();
+        if (currentAudioPlayerCt >= maxAudioPlayerCt){
+            throw new DisxConcurrentAudioNodeCeilingException("Max audio player count reached!");
         }
     }
 

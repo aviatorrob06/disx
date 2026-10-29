@@ -57,4 +57,8 @@ public class DisxWWW2PCMException extends DisxException{
         return resourceNotFound;
     }
 
+    public boolean wasTooManyRequests(){
+        return (statusCode == 429);
+    }
+
 }

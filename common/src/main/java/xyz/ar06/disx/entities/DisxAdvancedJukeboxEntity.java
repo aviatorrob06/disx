@@ -1,8 +1,6 @@
 package xyz.ar06.disx.entities;
 
-import net.minecraft.ChatFormatting;
 import net.minecraft.core.Direction;
-import net.minecraft.network.chat.Component;
 import net.minecraft.world.WorldlyContainer;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import org.jetbrains.annotations.Nullable;
@@ -27,7 +25,6 @@ import xyz.ar06.disx.enchantments.DisxDiscEnchantmentHelper;
 import xyz.ar06.disx.enchantments.DisxRetrogradeCurseEnchantment;
 import xyz.ar06.disx.enchantments.DisxTempoEnchantment;
 import xyz.ar06.disx.items.DisxCustomDisc;
-import xyz.ar06.disx.utils.DisxYoutubeResolver;
 
 import java.util.ArrayList;
 import java.util.UUID;
@@ -159,33 +156,6 @@ public class DisxAdvancedJukeboxEntity extends BlockEntity implements ContainerS
     @Override
     public boolean stillValid(Player player) {
         return false;
-    }
-
-    @Deprecated public void tryGetUpdatedDiscName(Player player){
-        ItemStack discStack = this.itemInventory.get(0);
-        if (!discStack.isEmpty()){
-            CompoundTag compoundTag = discStack.getTag();
-            DisxLogger.debug("Found disc in jukebox, checking name");
-            String discName = compoundTag.getString("discName");
-            String videoId = compoundTag.getString("videoId");
-            if (discName.equals("Video Not Found")){
-                DisxLogger.debug("Disc has no name. Attempting to find one...");
-                String videoName = DisxYoutubeResolver.scrapeTitle(videoId);
-                if (!videoName.equals("Video Not Found")){
-                    DisxLogger.debug("Found updated name: " + videoName);
-                    compoundTag.putString("discName", videoName);
-                    if (discStack.equals(this.itemInventory.get(0))){
-                        DisxLogger.debug("Disc stack still the same in Advanced Jukebox, setting updated nbt tag");
-                        discStack.setTag(compoundTag);
-                        player.sendSystemMessage(Component.translatable("sysmsg.disx.updated_disc_name", "Advanced Jukebox"));
-                        player.sendSystemMessage(Component.translatable("sysmsg.disx.updated_disc_name.name", videoName).withStyle(ChatFormatting.GRAY));
-                    }
-                } else {
-                    DisxLogger.debug("Video name not found once more");
-                }
-            }
-        }
-
     }
 
     @Override

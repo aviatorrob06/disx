@@ -197,6 +197,9 @@ public class DisxConfigHandler {
                 updateProperty("direct_url_enabled", "false");
                 updateProperty("cache_files_max_size", "5");
                 updateProperty("config_version", "5");
+                if (properties.contains("video_existence_check")){
+                    properties.remove("video_existence_check");
+                }
             }
         }
 

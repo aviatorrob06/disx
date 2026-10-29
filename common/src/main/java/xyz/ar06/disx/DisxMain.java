@@ -112,7 +112,6 @@ public class DisxMain {
         //Pull Mod Info
         DisxModInfo.pullLatestVersion();
 
-
         //Fuel Registrations done in individual client loaders
 
         //Event Registrations
@@ -140,18 +139,7 @@ public class DisxMain {
 
         LifecycleEvent.SERVER_STARTED.register(DisxSystemMessages::devBuildNotice);
 
-        //LifecycleEvent.SERVER_STARTED.register(DisxAudioStreamingNode::initPlayerManager);
-
-        //LifecycleEvent.SERVER_STARTED.register(DisxSystemMessages::forcingDisxYtSrcApi);
-
-        //LifecycleEvent.SERVER_STARTED.register(DisxSystemMessages::forcingLiveYtSrc);
-
-
         LifecycleEvent.SERVER_STARTING.register(DisxTmpHandler::onServerStart);
-
-
-        //LifecycleEvent.SERVER_STARTED.register(DisxYTDLPWrapper::extractYTDLP);
-        //LifecycleEvent.SERVER_STARTED.register(DisxYTDLPWrapper::extractFFMPEG);
 
         InteractionEvent.RIGHT_CLICK_BLOCK.register(DisxAdvancedJukebox::leverListener);
 

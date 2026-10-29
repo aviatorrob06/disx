@@ -11,7 +11,6 @@ import java.util.concurrent.CompletableFuture;
 public class DisxPropertyTypeSuggestionProvider {
     public static CompletableFuture<Suggestions> getSuggestions(CommandContext<CommandSourceStack> commandSourceStackCommandContext, SuggestionsBuilder suggestionsBuilder) {
         suggestionsBuilder.suggest("player_use_whitelist_enabled");
-        suggestionsBuilder.suggest("video_existence_check");
         suggestionsBuilder.suggest("max_audio_players");
         suggestionsBuilder.suggest("debug_mode");
         suggestionsBuilder.suggest("audio_radius");

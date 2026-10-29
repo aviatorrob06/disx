@@ -12,7 +12,6 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.item.*;
-import net.minecraft.world.item.enchantment.EnchantmentInstance;
 import net.minecraft.world.level.block.*;
 import xyz.ar06.disx.DisxSoundEvents;
 import xyz.ar06.disx.*;
@@ -20,6 +19,7 @@ import xyz.ar06.disx.client_only.DisxAudioInstanceRegistry;
 import xyz.ar06.disx.client_only.DisxConfigRecordS2C;
 import xyz.ar06.disx.config.DisxConfigHandler;
 import xyz.ar06.disx.entities.DisxAdvancedJukeboxEntity;
+import xyz.ar06.disx.exceptions.*;
 import xyz.ar06.disx.items.DisxCustomDisc;
 import xyz.ar06.disx.utils.DisxInternetCheck;
 import xyz.ar06.disx.utils.DisxJukeboxUsageCooldownManager;
@@ -89,73 +89,76 @@ public class DisxAdvancedJukebox extends BaseEntityBlock {
 
     @Override
     public InteractionResult use(BlockState blockState, Level level, BlockPos blockPos, Player player, InteractionHand interactionHand, BlockHitResult blockHitResult) {
-
-        if (!level.isClientSide() && interactionHand == InteractionHand.MAIN_HAND && !debounce && !DisxJukeboxUsageCooldownManager.isOnCooldown(blockPos, level.dimension())){
-            ItemStack stack = player.getMainHandItem();
-            Item item = null;
-            if (stack != null){
-                item = stack.getItem();
-            }
-            DisxAdvancedJukeboxEntity entity = (DisxAdvancedJukeboxEntity) level.getBlockEntity(blockPos);
-            if (entity.isHas_record()){
-                debounce = true;
-                DisxLogger.debug("does have record, taking it out");
-                DisxJukeboxUsageCooldownManager.updateCooldown(blockPos, level.dimension());
-                ItemStack stackCopy = entity.getItem(0).copyWithCount(1);
-                entity.removeItem(0, 1);
-                player.getInventory().add(stackCopy);
-                entity.setChanged();
-                DisxLogger.debug("[advanced jukebox] current has record value: " + entity.isHas_record());
-                level.playSound(null, blockPos, SoundEvents.CHAIN_STEP, SoundSource.BLOCKS, 1.0F, 1.0F);
-                debounce = false;
-                return InteractionResult.SUCCESS;
-            } else if (!entity.isHas_record()){
-                if (item instanceof DisxCustomDisc){
-                    if (stack.getTag() != null){
-                        if (!isPassingAudioPrerequisiteChecks(player, level)){
-                            return InteractionResult.FAIL;
-                        }
-                        DisxLogger.debug("doesn't have record, trying putting it in");
-                        debounce = true;
-                        String discName = stack.getTag().getString("discName");
-                        CompoundTag stackTag = stack.getTag();
-                        //alpha discs compatibility
-                        if (discName.isBlank() || discName.isEmpty()){
-                            stackTag.putString("discName", stack.getHoverName().getString());
-                            stack.setTag(stackTag);
-                        }
-                        //legacy YT-Only source compatibility
-                        if (stackTag.contains("videoId")){
-                            String videoId = stack.getTag().getString("videoId");
-                            if (!videoId.contains("http")){
-                                videoId = "https://www.youtube.com/watch?v=" + videoId;
+        try {
+            if (!level.isClientSide() && interactionHand == InteractionHand.MAIN_HAND && !debounce && !DisxJukeboxUsageCooldownManager.isOnCooldown(blockPos, level.dimension())){
+                ItemStack stack = player.getMainHandItem();
+                Item item = null;
+                if (stack != null){
+                    item = stack.getItem();
+                }
+                DisxAdvancedJukeboxEntity entity = (DisxAdvancedJukeboxEntity) level.getBlockEntity(blockPos);
+                if (entity.isHas_record()){
+                    debounce = true;
+                    DisxLogger.debug("does have record, taking it out");
+                    DisxJukeboxUsageCooldownManager.updateCooldown(blockPos, level.dimension());
+                    ItemStack stackCopy = entity.getItem(0).copyWithCount(1);
+                    entity.removeItem(0, 1);
+                    player.getInventory().add(stackCopy);
+                    entity.setChanged();
+                    DisxLogger.debug("[advanced jukebox] current has record value: " + entity.isHas_record());
+                    level.playSound(null, blockPos, SoundEvents.CHAIN_STEP, SoundSource.BLOCKS, 1.0F, 1.0F);
+                    debounce = false;
+                    return InteractionResult.SUCCESS;
+                } else if (!entity.isHas_record()){
+                    if (item instanceof DisxCustomDisc){
+                        if (stack.getTag() != null){
+                            DisxServerAudioRegistry.checkAudioPrerequisiteChecks(player, level);
+                            DisxLogger.debug("doesn't have record, trying putting it in");
+                            debounce = true;
+                            String discName = stack.getTag().getString("discName");
+                            CompoundTag stackTag = stack.getTag();
+                            //alpha discs compatibility
+                            if (discName.isBlank() || discName.isEmpty()){
+                                stackTag.putString("discName", stack.getHoverName().getString());
+                                stack.setTag(stackTag);
                             }
-                            stackTag.putString("mediaUrl", videoId);
-                            stackTag.remove("videoId");
-                            stack.setTag(stackTag);
+                            //legacy YT-Only source compatibility
+                            if (stackTag.contains("videoId")){
+                                String videoId = stack.getTag().getString("videoId");
+                                if (!videoId.contains("http")){
+                                    videoId = "https://www.youtube.com/watch?v=" + videoId;
+                                }
+                                stackTag.putString("mediaUrl", videoId);
+                                stackTag.remove("videoId");
+                                stack.setTag(stackTag);
+                            }
+                            if (!stackTag.contains("mediaUrl")){
+                                return InteractionResult.FAIL;
+                            }
+                            String mediaUrl = stackTag.getString("mediaUrl");
+                            DisxWWW2PCMReference www2PCMReference = new DisxWWW2PCMReference(mediaUrl);
+                            //player.getCooldowns().addCooldown(item, 999999999);
+                            ItemStack stackCopy = stack.copy();
+                            stack.setCount(stack.getCount() - 1);
+                            entity.setItem(0, stackCopy, player);
+                            DisxJukeboxUsageCooldownManager.updateCooldown(blockPos, level.dimension());
+                            DisxServerPacketIndex.ServerPackets.loadingAudioIdMessage(www2PCMReference.getIdentifier(), player);
+                            DisxLogger.debug("current has record value: " + entity.isHas_record());
+                            level.playSound(null, blockPos, SoundEvents.CHICKEN_EGG, SoundSource.BLOCKS, 1.0F, 1.0F);
+                            debounce = false;
+                            //player.getCooldowns().removeCooldown(item);
+                            entity.setChanged();
+                            //attempt to get the latest video title if disc was made with no proper title
+                            //CompletableFuture.runAsync(() -> entity.tryGetUpdatedDiscName(player));
+                            return InteractionResult.SUCCESS;
                         }
-                        if (!stackTag.contains("mediaUrl")){
-                            return InteractionResult.FAIL;
-                        }
-                        String mediaUrl = stackTag.getString("mediaUrl");
-                        DisxWWW2PCMReference www2PCMReference = new DisxWWW2PCMReference(mediaUrl);
-                        //player.getCooldowns().addCooldown(item, 999999999);
-                        ItemStack stackCopy = stack.copy();
-                        stack.setCount(stack.getCount() - 1);
-                        entity.setItem(0, stackCopy, player);
-                        DisxJukeboxUsageCooldownManager.updateCooldown(blockPos, level.dimension());
-                        DisxServerPacketIndex.ServerPackets.loadingAudioIdMessage(www2PCMReference.getIdentifier(), player);
-                        DisxLogger.debug("current has record value: " + entity.isHas_record());
-                        level.playSound(null, blockPos, SoundEvents.CHICKEN_EGG, SoundSource.BLOCKS, 1.0F, 1.0F);
-                        debounce = false;
-                        //player.getCooldowns().removeCooldown(item);
-                        entity.setChanged();
-                        //attempt to get the latest video title if disc was made with no proper title
-                        //CompletableFuture.runAsync(() -> entity.tryGetUpdatedDiscName(player));
-                        return InteractionResult.SUCCESS;
                     }
                 }
             }
+        } catch (DisxException e){
+            DisxLogger.error(e);
+            DisxSystemMessages.disxError(player, e);
+            return InteractionResult.FAIL;
         }
         return super.use(blockState, level, blockPos, player, interactionHand, blockHitResult);
     }
@@ -196,35 +199,6 @@ public class DisxAdvancedJukebox extends BaseEntityBlock {
         ItemEntity itemEntity2 = new ItemEntity(serverLevel, x, y, z, item2);
         serverLevel.addFreshEntity(itemEntity2);
         super.spawnAfterBreak(blockState, serverLevel, blockPos, itemStack, bl);
-    }
-
-    private static boolean isPassingAudioPrerequisiteChecks(Player player, Level level){
-        // check Internet
-        if (!DisxInternetCheck.checkInternet()){
-            DisxSystemMessages.noInternetErrorMessage(player);
-            return false;
-        }
-        //Check Use-Blacklist, Use-Whitelist, and Dimension-Blacklist
-        if (DisxConfigHandler.SERVER.isOnUseBlacklist(player.getUUID())){
-            DisxSystemMessages.blacklistedByServer(player);
-            return false;
-        }
-        if (!DisxConfigHandler.SERVER.isOnUseWhitelist(player.getUUID())){
-            DisxSystemMessages.notWhitelistedByServer(player);
-            return false;
-        }
-        if (DisxConfigHandler.SERVER.isOnDimensionBlacklist(level.dimension())){
-            DisxSystemMessages.dimensionBlacklisted(player);
-            return false;
-        }
-        //Check Audio Player Count
-        int maxAudioPlayerCt = Integer.valueOf(DisxConfigHandler.SERVER.getProperty("max_audio_players"));
-        int currentAudioPlayerCt = DisxServerAudioRegistry.getRegistryCount();
-        if (currentAudioPlayerCt >= maxAudioPlayerCt){
-            DisxSystemMessages.maxAudioPlayerCtReached(player);
-            return false;
-        }
-        return true;
     }
 
     /*

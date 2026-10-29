@@ -3,12 +3,10 @@ package xyz.ar06.disx.entities.vehicle;
 
 import dev.architectury.registry.registries.Registrar;
 import dev.architectury.registry.registries.RegistrySupplier;
-import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
@@ -35,10 +33,10 @@ import xyz.ar06.disx.audio_filters.DisxAudioFilterType;
 import xyz.ar06.disx.blocks.DisxAdvancedJukebox;
 import xyz.ar06.disx.client_only.DisxAudioInstanceRegistry;
 import xyz.ar06.disx.client_only.DisxConfigRecordS2C;
+import xyz.ar06.disx.exceptions.DisxException;
 import xyz.ar06.disx.items.DisxAdvancedJukeboxMinecartItem;
 import xyz.ar06.disx.items.DisxCustomDisc;
 import xyz.ar06.disx.utils.DisxWWW2PCMReference;
-import xyz.ar06.disx.utils.DisxYoutubeResolver;
 
 import java.util.ArrayList;
 
@@ -61,56 +59,65 @@ public class DisxAdvancedJukeboxMinecart extends Minecart implements ContainerEn
     }
     @Override
     public InteractionResult interact(Player player, InteractionHand interactionHand) {
-        if (interactionHand.equals(InteractionHand.MAIN_HAND) && !player.level().isClientSide()){
-            ItemStack handStack = player.getMainHandItem();
-            CompoundTag tag = handStack.getTag();
-            if (handStack.getItem() instanceof DisxCustomDisc ){
-                if (!isHas_Record()){
-                    DisxLogger.debug("Does not have record, taking and putting in");
-                    String discName = tag.getString("discName");
-                    //alpha discs compatibility
-                    if (discName.isBlank() || discName.isEmpty()){
-                        tag.putString("discName", handStack.getHoverName().getString());
-                        handStack.setTag(tag);
-                    }
-                    //legacy YT-Only source compatibility
-                    if (tag.contains("videoId")){
-                        String videoId = tag.getString("videoId");
-                        if (!videoId.contains("http")){
-                            videoId = "https://www.youtube.com/watch?v=" + videoId;
+        try {
+            if (interactionHand.equals(InteractionHand.MAIN_HAND) && !player.level().isClientSide()){
+                ItemStack handStack = player.getMainHandItem();
+                CompoundTag tag = handStack.getTag();
+                if (handStack.getItem() instanceof DisxCustomDisc ){
+                    if (!isHas_Record()){
+                        DisxLogger.debug("Checking audio prerequisite conditions");
+                        DisxServerAudioRegistry.checkAudioPrerequisiteChecks(player, level());
+                        DisxLogger.debug("Does not have record, taking and putting in");
+                        String discName = tag.getString("discName");
+                        //alpha discs compatibility
+                        if (discName.isBlank() || discName.isEmpty()){
+                            tag.putString("discName", handStack.getHoverName().getString());
+                            handStack.setTag(tag);
                         }
-                        tag.putString("mediaUrl", videoId);
-                        tag.remove("videoId");
-                        handStack.setTag(tag);
+                        //legacy YT-Only source compatibility
+                        if (tag.contains("videoId")){
+                            String videoId = tag.getString("videoId");
+                            if (!videoId.contains("http")){
+                                videoId = "https://www.youtube.com/watch?v=" + videoId;
+                            }
+                            tag.putString("mediaUrl", videoId);
+                            tag.remove("videoId");
+                            handStack.setTag(tag);
+                        }
+                        if (!tag.contains("mediaUrl")){
+                            return InteractionResult.FAIL;
+                        }
+                        String mediaUrl = tag.getString("mediaUrl");
+                        DisxWWW2PCMReference www2PCMReference = new DisxWWW2PCMReference(mediaUrl);
+                        ItemStack stackCopy = handStack.copyWithCount(1);
+                        handStack.setCount(handStack.getCount() - 1);
+                        setItem(0, stackCopy, player);
+                        DisxServerPacketIndex.ServerPackets.loadingAudioIdMessage(www2PCMReference.getIdentifier(), player);
+                        this.level().playSound(null, this, SoundEvents.CHICKEN_EGG, SoundSource.BLOCKS, 1.0F, 1.0F);
+                        //CompletableFuture.runAsync(() -> this.tryGetUpdatedDiscName(player));
+                    } else {
+                        DisxLogger.debug("Has record, taking out and putting in inventory");
+                        ItemStack stack = this.items.get(0).copyWithCount(1);
+                        removeItem(0, 1);
+                        this.level().playSound(null, this, SoundEvents.CHAIN_STEP, SoundSource.BLOCKS, 1.0F, 1.0F);
+                        player.getInventory().add(stack);
                     }
-                    if (!tag.contains("mediaUrl")){
-                        return InteractionResult.FAIL;
+                } else if (handStack.isEmpty()) {
+                    if (isHas_Record()){
+                        DisxLogger.debug("Has record, taking out and putting in inventory");
+                        ItemStack stack = this.items.get(0).copyWithCount(1);
+                        this.level().playSound(null, this, SoundEvents.CHAIN_STEP, SoundSource.BLOCKS, 1.0F, 1.0F);
+                        removeItem(0, 1);
+                        player.getInventory().add(stack);
                     }
-                    String mediaUrl = tag.getString("mediaUrl");
-                    DisxWWW2PCMReference www2PCMReference = new DisxWWW2PCMReference(mediaUrl);
-                    ItemStack stackCopy = handStack.copyWithCount(1);
-                    handStack.setCount(handStack.getCount() - 1);
-                    setItem(0, stackCopy, player);
-                    DisxServerPacketIndex.ServerPackets.loadingAudioIdMessage(www2PCMReference.getIdentifier(), player);
-                    this.level().playSound(null, this, SoundEvents.CHICKEN_EGG, SoundSource.BLOCKS, 1.0F, 1.0F);
-                    //CompletableFuture.runAsync(() -> this.tryGetUpdatedDiscName(player));
-                } else {
-                    DisxLogger.debug("Has record, taking out and putting in inventory");
-                    ItemStack stack = this.items.get(0).copyWithCount(1);
-                    removeItem(0, 1);
-                    this.level().playSound(null, this, SoundEvents.CHAIN_STEP, SoundSource.BLOCKS, 1.0F, 1.0F);
-                    player.getInventory().add(stack);
-                }
-            } else if (handStack.isEmpty()) {
-                if (isHas_Record()){
-                    DisxLogger.debug("Has record, taking out and putting in inventory");
-                    ItemStack stack = this.items.get(0).copyWithCount(1);
-                    this.level().playSound(null, this, SoundEvents.CHAIN_STEP, SoundSource.BLOCKS, 1.0F, 1.0F);
-                    removeItem(0, 1);
-                    player.getInventory().add(stack);
                 }
             }
+        } catch (DisxException e){
+            DisxLogger.error(e);
+            DisxSystemMessages.disxError(player, e);
+            return InteractionResult.FAIL;
         }
+
         return super.interact(player, interactionHand);
     }
 
@@ -269,32 +276,6 @@ public class DisxAdvancedJukeboxMinecart extends Minecart implements ContainerEn
             }
         }
         this.setChanged();
-    }
-
-    @Deprecated public void tryGetUpdatedDiscName(Player player){
-        ItemStack discStack = this.items.get(0);
-        if (!discStack.isEmpty()){
-            CompoundTag compoundTag = discStack.getTag();
-            DisxLogger.debug("Found disc in jukebox, checking name");
-            String discName = compoundTag.getString("discName");
-            String videoId = compoundTag.getString("videoId");
-            if (discName.equals("Video Not Found")){
-                DisxLogger.debug("Disc has no name. Attempting to find one...");
-                String videoName = DisxYoutubeResolver.scrapeTitle(videoId);
-                if (!videoName.equals("Video Not Found")){
-                    DisxLogger.debug("Found updated name: " + videoName);
-                    compoundTag.putString("discName", videoName);
-                    if (discStack.equals(this.items.get(0))){
-                        DisxLogger.debug("Disc stack still the same in Advanced Jukebox, setting updated nbt tag");
-                        discStack.setTag(compoundTag);
-                        player.sendSystemMessage(Component.translatable("sysmsg.disx.updated_disc_name", "Advanced Jukebox Minecart"));
-                        player.sendSystemMessage(Component.translatable("sysmsg.disx.updated_disc_name.name", videoName).withStyle(ChatFormatting.GRAY));
-                    }
-                } else {
-                    DisxLogger.debug("Video name not found once more");
-                }
-            }
-        }
     }
 
         @Override

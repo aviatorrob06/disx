@@ -75,50 +75,12 @@ public class DisxStampCommand {
                 plr.addItem(recordStampStack);
             }
             context.getSource().sendSystemMessage(Component.translatable("sysmsg.disx.stampcmd.success"));
-        } catch (DisxNoInternetException e){
+        } catch (DisxException e){
             if (context.getSource().isPlayer()){
-                DisxSystemMessages.noMediaFound(context.getSource().getPlayer());
+                DisxSystemMessages.disxError(context.getSource().getPlayer(), e);
             } else {
-                DisxSystemMessages.noMediaFound(context.getSource().getServer());
+                DisxSystemMessages.disxError(context.getSource().getServer(), e);
             }
-            DisxLogger.error(e);
-        } catch (DisxWWW2PCMException e){
-            if (e.wasResourceNotFound()){
-                if (context.getSource().isPlayer()){
-                    DisxSystemMessages.noMediaFound(context.getSource().getPlayer());
-                } else {
-                    DisxSystemMessages.noMediaFound(context.getSource().getServer());
-                }
-            } else {
-                if (context.getSource().isPlayer()){
-                    DisxSystemMessages.apiError(context.getSource().getPlayer());
-                } else {
-                    DisxSystemMessages.apiError(context.getSource().getServer());
-                }
-            }
-            DisxLogger.error(e);
-        } catch (DisxInvalidDiscTypeException e){
-            if (context.getSource().isPlayer()){
-                DisxSystemMessages.invalidDiscType(context.getSource().getPlayer());
-            } else {
-                DisxSystemMessages.invalidDiscType(context.getSource().getServer());
-            }
-            DisxLogger.error(e);
-        } catch (DisxTooLongException e){
-            if (context.getSource().isPlayer()){
-                DisxSystemMessages.badDuration(context.getSource().getPlayer());
-            } else {
-                DisxSystemMessages.badDuration(context.getSource().getServer());
-            }
-            DisxLogger.error(e);
-        } catch (DisxMalformedURLException e){
-            if (context.getSource().isPlayer()){
-                DisxSystemMessages.badURL(context.getSource().getPlayer());
-            } else {
-                DisxSystemMessages.badURL(context.getSource().getServer());
-            }
-            DisxLogger.error(e);
-        } catch (Exception e){
             DisxLogger.error(e);
         }
 

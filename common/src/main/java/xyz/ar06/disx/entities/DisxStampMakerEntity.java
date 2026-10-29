@@ -2,8 +2,7 @@ package xyz.ar06.disx.entities;
 
 import net.minecraft.world.level.block.Blocks;
 import xyz.ar06.disx.DisxLogger;
-import xyz.ar06.disx.exceptions.DisxMalformedURLException;
-import xyz.ar06.disx.exceptions.DisxWWW2PCMException;
+import xyz.ar06.disx.exceptions.*;
 import xyz.ar06.disx.utils.*;
 import xyz.ar06.disx.DisxMain;
 import xyz.ar06.disx.DisxSystemMessages;
@@ -212,71 +211,54 @@ public class DisxStampMakerEntity extends BlockEntity implements Container, Worl
 
     public void produceStamp(Player player){
         CompletableFuture.runAsync(() -> {
-            if (!DisxInternetCheck.checkInternet()){
-                DisxSystemMessages.noInternetErrorMessage(player);
-            } else {
-                this.processing = true;
-                try {
-                    this.setChanged();
-                    DisxWWW2PCMReference www2PCMReference = new DisxWWW2PCMReference(this.mediaUrl);
-                    String title = www2PCMReference.probeTitle();
-                    int duration = www2PCMReference.probeDuration();
-                    String identifier = www2PCMReference.getIdentifier();
-                    if (duration > 1800) {
-                        DisxSystemMessages.badDuration(player);
-                        this.processing = false;
-                        this.setMediaUrl("", player);
-                        return;
-                    }
-                    if (this.items.get(0).equals(ItemStack.EMPTY)){
-                        DisxLogger.debug("no lacquer block detected");
-                        this.processing = false;
-                        this.setMediaUrl("", player);
-                        return;
-                    }
-                    this.setItem(0, ItemStack.EMPTY);
-                    BlockPos blockPos = this.getBlockPos();
-                    Level lvl = getLevel();
-                    lvl.playSound(null, blockPos, SoundEvents.UI_CARTOGRAPHY_TABLE_TAKE_RESULT, SoundSource.BLOCKS);
-                    DisxRecordStamp stamp = (DisxRecordStamp) DisxMain.REGISTRAR_MANAGER.get().get(Registries.ITEM).get(new ResourceLocation("disx", "record_stamp"));
-                    CompoundTag tag = new CompoundTag();
-                    tag.putString("mediaUrl", this.mediaUrl);
-                    tag.putString("mediaName", title);
-                    ItemStack stampStack = new ItemStack(stamp);
-                    stampStack.setTag(tag);
-                    stampStack.setCount(1);
-                    if (lvl.getBlockState(blockPos.below()).is(Blocks.HOPPER)){
-                        this.items.set(1, stampStack);
-                        this.mediaUrl = null;
-                        lvl.playSound(null, blockPos, SoundEvents.EXPERIENCE_ORB_PICKUP, SoundSource.BLOCKS);
-                    } else {
-                        ItemEntity itemEntity = new ItemEntity(getLevel(), ((double) blockPos.getX()) + 0.5, ((double) blockPos.getY()) + 0.2, ((double) blockPos.getZ()) + 0.5, stampStack);
-                        itemEntity.setDefaultPickUpDelay();
-                        this.mediaUrl = null;
-                        lvl.playSound(null, blockPos, SoundEvents.EXPERIENCE_ORB_PICKUP, SoundSource.BLOCKS);
-                        level.addFreshEntity(itemEntity);
-                    }
-                } catch (DisxMalformedURLException e){
-                    DisxLogger.error(e);
-                    if (this.items.get(0).is(DisxLacquerBlock.itemRegistration.get())) {
-                        DisxSystemMessages.badURL(player);
-                    }
-                } catch (DisxWWW2PCMException e){
-                    DisxLogger.error(e);
-                    if (e.wasResourceNotFound()){
-                        if (this.items.get(0).is(DisxLacquerBlock.itemRegistration.get())) {
-                            DisxSystemMessages.noMediaFound(player);
-                        }
-                    } else {
-                        if (this.items.get(0).is(DisxLacquerBlock.itemRegistration.get())) {
-                            DisxSystemMessages.apiError(player);
-                        }
-                    }
-
+            this.processing = true;
+            try {
+                if (!DisxInternetCheck.checkInternet()){
+                    throw new DisxNoInternetException("No internet!");
                 }
-                this.processing = false;
-                this.setMediaUrl("", player);
+                this.setChanged();
+                DisxWWW2PCMReference www2PCMReference = new DisxWWW2PCMReference(this.mediaUrl);
+                String title = www2PCMReference.probeTitle();
+                int duration = www2PCMReference.probeDuration();
+                if (duration > 1800) {
+                    throw new DisxTooLongException("Duration too long!");
+                }
+                if (this.items.get(0).equals(ItemStack.EMPTY)){
+                    DisxLogger.debug("no lacquer block detected");
+                    this.processing = false;
+                    this.setMediaUrl("", player);
+                    return;
+                }
+                this.setItem(0, ItemStack.EMPTY);
+                BlockPos blockPos = this.getBlockPos();
+                Level lvl = getLevel();
+                lvl.playSound(null, blockPos, SoundEvents.UI_CARTOGRAPHY_TABLE_TAKE_RESULT, SoundSource.BLOCKS);
+                DisxRecordStamp stamp = (DisxRecordStamp) DisxMain.REGISTRAR_MANAGER.get().get(Registries.ITEM).get(new ResourceLocation("disx", "record_stamp"));
+                CompoundTag tag = new CompoundTag();
+                tag.putString("mediaUrl", this.mediaUrl);
+                tag.putString("mediaName", title);
+                ItemStack stampStack = new ItemStack(stamp);
+                stampStack.setTag(tag);
+                stampStack.setCount(1);
+                if (lvl.getBlockState(blockPos.below()).is(Blocks.HOPPER)){
+                    this.items.set(1, stampStack);
+                    this.mediaUrl = null;
+                    lvl.playSound(null, blockPos, SoundEvents.EXPERIENCE_ORB_PICKUP, SoundSource.BLOCKS);
+                } else {
+                    ItemEntity itemEntity = new ItemEntity(getLevel(), ((double) blockPos.getX()) + 0.5, ((double) blockPos.getY()) + 0.2, ((double) blockPos.getZ()) + 0.5, stampStack);
+                    itemEntity.setDefaultPickUpDelay();
+                    this.mediaUrl = null;
+                    lvl.playSound(null, blockPos, SoundEvents.EXPERIENCE_ORB_PICKUP, SoundSource.BLOCKS);
+                    level.addFreshEntity(itemEntity);
+                }
+            } catch (DisxException e){
+                DisxLogger.error(e);
+                if (this.items.get(0).is(DisxLacquerBlock.itemRegistration.get())) {
+                    DisxSystemMessages.disxError(player, e);
+                }
             }
+            this.processing = false;
+            this.setMediaUrl("", player);
         });
 
     }
@@ -285,74 +267,54 @@ public class DisxStampMakerEntity extends BlockEntity implements Container, Worl
         BlockPos blockPos = this.getBlockPos();
         Level lvl = getLevel();
         CompletableFuture.runAsync(() -> {
-            if (!DisxInternetCheck.checkInternet()){
-                DisxSystemMessages.noInternetFoundStampMakerAsync(this.getLevel().getServer(), this.getBlockPos());
-            } else {
-                this.processing = true;
-                try {
-                    this.setChanged();
-                    DisxWWW2PCMReference www2PCMReference = new DisxWWW2PCMReference(this.mediaUrl);
-                    String title = www2PCMReference.probeTitle();
-                    int duration = www2PCMReference.probeDuration();
-                    DisxWWW2PCMSourceType sourceType = www2PCMReference.getService();
-                    if (duration > 1800) {
-                        DisxSystemMessages.badDuration(lvl.getServer());
-                        this.processing = false;
-                        this.mediaUrl = null;
-                        this.setChanged();
-                        return;
-                    }
-                    if (this.items.get(0).equals(ItemStack.EMPTY)){
-                        this.processing = false;
-                        this.mediaUrl = null;
-                        this.setChanged();
-                        return;
-                    }
-                    this.setItem(0, ItemStack.EMPTY);
-                    lvl.playSound(null, blockPos, SoundEvents.UI_CARTOGRAPHY_TABLE_TAKE_RESULT, SoundSource.BLOCKS);
-                    DisxRecordStamp stamp = (DisxRecordStamp) DisxMain.REGISTRAR_MANAGER.get().get(Registries.ITEM).get(new ResourceLocation("disx", "record_stamp"));
-                    CompoundTag tag = new CompoundTag();
-                    tag.putString("mediaUrl", this.mediaUrl);
-                    tag.putString("mediaName", title);
-                    ItemStack stampStack = new ItemStack(stamp);
-                    stampStack.setTag(tag);
-                    stampStack.setCount(1);
-                    if (lvl.getBlockState(blockPos.below()).is(Blocks.HOPPER)){
-                        DisxLogger.debug("Found hopper below, placing record stamp in appropriate inventory for taking");
-                        this.items.set(1, stampStack);
-                        this.mediaUrl = null;
-                        lvl.playSound(null, blockPos, SoundEvents.EXPERIENCE_ORB_PICKUP, SoundSource.BLOCKS);
-                    } else {
-                        DisxLogger.debug("Did not find hopper below; Ejecting record stamp");
-                        DisxLogger.debug("Below is: " + lvl.getBlockState(blockPos.below()));
-                        DisxLogger.debug("BlockPos of Below: " + blockPos.below());
-                        ItemEntity itemEntity = new ItemEntity(getLevel(), ((double) blockPos.getX()) + 0.5, ((double) blockPos.getY()) + 0.2, ((double) blockPos.getZ()) + 0.5, stampStack);
-                        itemEntity.setDefaultPickUpDelay();
-                        this.mediaUrl = null;
-                        lvl.playSound(null, blockPos, SoundEvents.EXPERIENCE_ORB_PICKUP, SoundSource.BLOCKS);
-                        level.addFreshEntity(itemEntity);
-                    }
-                } catch (DisxMalformedURLException e){
-                    DisxLogger.error(e);
-                    if (this.items.get(0).is(DisxLacquerBlock.itemRegistration.get())){
-                        DisxSystemMessages.badURLStampMakerAsync(lvl.getServer(), blockPos);
-                    }
-                } catch (DisxWWW2PCMException e){
-                    DisxLogger.error(e);
-                    if (e.wasResourceNotFound()){
-                        if (this.items.get(0).is(DisxLacquerBlock.itemRegistration.get())) {
-                            DisxSystemMessages.mediaNotFoundStampMakerAsync(lvl.getServer(), blockPos);
-                        }
-                    } else {
-                        if (this.items.get(0).is(DisxLacquerBlock.itemRegistration.get())) {
-                            DisxSystemMessages.apiErrorStampMakerAsync(lvl.getServer(), blockPos);
-                        }
-                    }
-
+            this.processing = true;
+            try {
+                if (!DisxInternetCheck.checkInternet()){
+                    throw new DisxNoInternetException("No internet!");
                 }
-                this.processing = false;
                 this.setChanged();
+                DisxWWW2PCMReference www2PCMReference = new DisxWWW2PCMReference(this.mediaUrl);
+                String title = www2PCMReference.probeTitle();
+                int duration = www2PCMReference.probeDuration();
+                if (duration > 1800) {
+                    throw new DisxTooLongException("Duration too long!");
+                }
+                if (this.items.get(0).equals(ItemStack.EMPTY)){
+                    this.processing = false;
+                    this.mediaUrl = null;
+                    this.setChanged();
+                    return;
+                }
+                this.setItem(0, ItemStack.EMPTY);
+                lvl.playSound(null, blockPos, SoundEvents.UI_CARTOGRAPHY_TABLE_TAKE_RESULT, SoundSource.BLOCKS);
+                DisxRecordStamp stamp = (DisxRecordStamp) DisxMain.REGISTRAR_MANAGER.get().get(Registries.ITEM).get(new ResourceLocation("disx", "record_stamp"));
+                CompoundTag tag = new CompoundTag();
+                tag.putString("mediaUrl", this.mediaUrl);
+                tag.putString("mediaName", title);
+                ItemStack stampStack = new ItemStack(stamp);
+                stampStack.setTag(tag);
+                stampStack.setCount(1);
+                if (lvl.getBlockState(blockPos.below()).is(Blocks.HOPPER)){
+                    DisxLogger.debug("Found hopper below, placing record stamp in appropriate inventory for taking");
+                    this.items.set(1, stampStack);
+                    this.mediaUrl = null;
+                    lvl.playSound(null, blockPos, SoundEvents.EXPERIENCE_ORB_PICKUP, SoundSource.BLOCKS);
+                } else {
+                    DisxLogger.debug("Did not find hopper below; Ejecting record stamp");
+                    DisxLogger.debug("Below is: " + lvl.getBlockState(blockPos.below()));
+                    DisxLogger.debug("BlockPos of Below: " + blockPos.below());
+                    ItemEntity itemEntity = new ItemEntity(getLevel(), ((double) blockPos.getX()) + 0.5, ((double) blockPos.getY()) + 0.2, ((double) blockPos.getZ()) + 0.5, stampStack);
+                    itemEntity.setDefaultPickUpDelay();
+                    this.mediaUrl = null;
+                    lvl.playSound(null, blockPos, SoundEvents.EXPERIENCE_ORB_PICKUP, SoundSource.BLOCKS);
+                    level.addFreshEntity(itemEntity);
+                }
+            } catch (DisxException e){
+                DisxLogger.error(e);
+                DisxSystemMessages.disxErrorAsync(level.getServer(), blockPos, "", e);
             }
+            this.processing = false;
+            this.setChanged();
         });
     }
 
