@@ -1,10 +1,7 @@
 package xyz.ar06.disx.exceptions;
 
-import xyz.ar06.disx.DisxLogger;
-
 public class DisxWWW2PCMException extends DisxException{
     public int statusCode;
-    public boolean resourceNotFound = false;
     public DisxWWW2PCMException(String message) {
         super(message);
     }
@@ -16,12 +13,6 @@ public class DisxWWW2PCMException extends DisxException{
     public DisxWWW2PCMException(String message, int statusCode) {
         super(message);
         this.statusCode = statusCode;
-    }
-
-    public DisxWWW2PCMException(String message, int statusCode, boolean wasResourceNotFound) {
-        super(message);
-        this.statusCode = statusCode;
-        this.resourceNotFound = wasResourceNotFound;
     }
 
     @Override
@@ -45,16 +36,12 @@ public class DisxWWW2PCMException extends DisxException{
         return (statusCode == 400);
     }
 
-    public boolean wasEndpointNotFound(){
+    public boolean wasMediaNotFound(){
         return (statusCode == 404);
     }
 
     public boolean wasForbiddenRequest(){
         return (statusCode == 400);
-    }
-
-    public boolean wasResourceNotFound(){
-        return resourceNotFound;
     }
 
     public boolean wasTooManyRequests(){

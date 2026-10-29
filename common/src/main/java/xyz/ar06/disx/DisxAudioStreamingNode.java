@@ -30,7 +30,9 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.LockSupport;
 
 import static xyz.ar06.disx.DisxAudioFormatConstants.*;
 
@@ -46,6 +48,8 @@ public class DisxAudioStreamingNode {
                 thread.setDaemon(true);
                 return thread;
             });
+    private static final long PACKET_INTERVAL_NS =
+            TimeUnit.SECONDS.toNanos((long) streamInterval);
 
     private AudioInputStream inputStream;// = AudioPlayerInputStream.createStream(audioPlayer, LPformat, 20000, true);;
     private File audioFile;
@@ -161,7 +165,18 @@ public class DisxAudioStreamingNode {
                     this.inputStream = new AudioInputStream(new FileInputStream(audioFile), format, (audioFile.length() / format.getFrameSize()));
                 }
                 int bytesRead;
-                while (inputStream != null && !this.isPaused()){
+                long nextSendTime = System.nanoTime();
+                while (inputStream != null && !this.isPaused() && !Thread.currentThread().isInterrupted()){
+                    long remaining = nextSendTime - System.nanoTime();
+
+                    if (remaining > 0) {
+                        LockSupport.parkNanos(remaining);
+                    }
+
+                    if (Thread.currentThread().isInterrupted()) {
+                        break;
+                    }
+
                     bytesRead = inputStream.read(buffer);
                     if (bytesRead != 0 && bytesRead != -1){
                         for (Player p : DisxServerAudioRegistry.getMcPlayers()) {
@@ -213,7 +228,9 @@ public class DisxAudioStreamingNode {
                             }
 
                         }
-                        Thread.sleep((long) (streamInterval * 1000L));
+
+                        nextSendTime += PACKET_INTERVAL_NS;
+
                     } else {
                         break;
                     }
@@ -225,25 +242,21 @@ public class DisxAudioStreamingNode {
                     DisxLogger.debug("Audio streaming stopped; audio node deregistered?");
                     //DisxServerAudioRegistry.removeFromRegistry(DisxAudioStreamingNode.this);
                 } else {
-                    try {
-                        if (loop){
-                            DisxLogger.debug("Audio streaming finished; loop == true; calling for track replay and restream");
-                            //this.audioPlayer.playTrack(cachedTrack.makeClone());
-                            this.streamAudioData();
-                        } else {
-                            DisxLogger.debug("Audio streaming finished; loop != true; waiting to deregister audio node (many seconds) if not already done so");
-                            Thread.sleep(((long) streamInterval * 1000L * 2L));
-                            DisxLogger.debug("deregistering audio node if not already done so");
-                            DisxServerAudioRegistry.removeFromRegistry(DisxAudioStreamingNode.this);
-                        }
-                    } catch (Exception e) {
-                        DisxAudioStreamingNodeException exception = new DisxAudioStreamingNodeException(e.getMessage());
-                        DisxLogger.error(exception);
+                    if (loop){
+                        DisxLogger.debug("Audio streaming finished; loop == true; calling for track replay and restream");
+                        //this.audioPlayer.playTrack(cachedTrack.makeClone());
+                        this.streamAudioData();
+                    } else {
+                        DisxLogger.debug("Audio streaming finished; loop != true; waiting to deregister audio node (many seconds) if not already done so");
+                        Thread.sleep(((long) streamInterval * 1000L * 2L));
+                        DisxLogger.debug("deregistering audio node if not already done so");
+                        DisxServerAudioRegistry.removeFromRegistry(DisxAudioStreamingNode.this);
                     }
                 }
 
             } catch (Exception e) {
-                DisxLogger.error(e);
+                DisxAudioStreamingNodeException exception = new DisxAudioStreamingNodeException(e.getMessage(), e);
+                DisxLogger.error(exception);
             }
     }
 

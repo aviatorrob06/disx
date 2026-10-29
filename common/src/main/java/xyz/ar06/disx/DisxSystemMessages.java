@@ -5,7 +5,6 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.commands.CommandSource;
-import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.*;
 import net.minecraft.resources.ResourceLocation;
@@ -13,7 +12,6 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.player.Player;
-import xyz.ar06.disx.config.DisxConfigHandler;
 import xyz.ar06.disx.exceptions.*;
 
 import java.util.ArrayList;
@@ -48,12 +46,10 @@ public class DisxSystemMessages {
             if (exception instanceof DisxWWW2PCMException e){
                 if (e.wasTooManyRequests()){
                     recipient.sendSystemMessage(Component.translatable("sysmsg.disx.error_api_ratelimit").withStyle(Style.EMPTY.withColor(TextColor.fromLegacyFormat(ChatFormatting.RED))));
-                } else if (e.wasResourceNotFound()){
-                    recipient.sendSystemMessage(Component.translatable("sysmsg.disx.error_loading_vid").withStyle(Style.EMPTY.withColor(TextColor.fromLegacyFormat(ChatFormatting.RED))));
                 } else if (e.wasBadRequest()){
                     recipient.sendSystemMessage(Component.translatable("sysmsg.disx.error_api_bad_request").withStyle(Style.EMPTY.withColor(TextColor.fromLegacyFormat(ChatFormatting.RED))));
-                } else if (e.wasEndpointNotFound()){
-                    recipient.sendSystemMessage(Component.translatable("sysmsg.disx.error_api_endpoint_invalid").withStyle(Style.EMPTY.withColor(TextColor.fromLegacyFormat(ChatFormatting.RED))));
+                } else if (e.wasMediaNotFound()){
+                    recipient.sendSystemMessage(Component.translatable("sysmsg.disx.error_api_no_match").withStyle(Style.EMPTY.withColor(TextColor.fromLegacyFormat(ChatFormatting.RED))));
                 } else if (e.wasForbiddenRequest()){
                     recipient.sendSystemMessage(Component.translatable("sysmsg.disx.error_api_request_forbidden").withStyle(Style.EMPTY.withColor(TextColor.fromLegacyFormat(ChatFormatting.RED))));
                 } else if (e.wasInternalServerError()){
