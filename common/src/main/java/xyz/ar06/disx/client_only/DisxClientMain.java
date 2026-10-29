@@ -14,6 +14,7 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.vehicle.Minecart;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
+import xyz.ar06.disx.DisxCreativeModeTabAssembly;
 import xyz.ar06.disx.DisxLogger;
 import xyz.ar06.disx.DisxMain;
 import xyz.ar06.disx.DisxSystemMessages;
@@ -75,6 +76,8 @@ public class DisxClientMain {
 
             InteractionEvent.RIGHT_CLICK_ITEM.register(DisxBehaviorHandling::itemRightClickListener);
             //ClientLifecycleEvent.CLIENT_SETUP.register(DisxConfigHandler.CLIENT::initializeConfig);
+
+            ClientLifecycleEvent.CLIENT_STARTED.register(DisxCreativeModeTabAssembly::addItems);
 
             DisxLogger.info("Success in Mod Launch (CLIENT)");
         }

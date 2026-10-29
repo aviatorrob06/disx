@@ -117,5 +117,16 @@
   "sysmsg.disx.configcmd.clearedrefreshtoken": "Le jeton a été effacé!",
   "sysmsg.disx.error_oauth": "Erreur Oauth2: YouTube pense que vous êtes un robot. Un administrateur de serveur a-t-il déjà configuré un jeton de rafraîchissement?",
   "sysmsg.disx.error_stat403": "Erreur: Code d'état 403 de YouTube",
-  "block.disx.ender_advanced_jukebox": "Jukebox Avancé de L'Ender"
+  "block.disx.ender_advanced_jukebox": "Jukebox Avancé de L'Ender",
+  "enchantment.disx.retrograde_curse": "Disx Malédiction de Rétrogradation",
+  "enchantment.disx.tempo_curse": "Disx Cadence du Tempo",
+  "enchantment.disx.resonance_curse": "Disx Cadence du Résonance",
+  "sysmsg.disx.error_api_ratelimit": "Erreur Disx: La limite de requêtes vers le serveur a été dépassée. Veuillez patienter une minute, puis réessayer.",
+  "sysmsg.disx.error_api_bad_request": "Erreur Disx: Requête WWW2PCM-API incorrecte! Consultez les journaux du serveur pour plus d'informations.",
+  "sysmsg.disx.error_api_request_forbidden": "Erreur Disx: Requête WWW2PCM-API non valide! Consultez les journaux du serveur pour plus d'informations.",
+  "sysmsg.disx.error_api_internal_error": "Erreur Disx: WWW2PCM-API a rencontré un problème interne. Si le problème persiste, contactez l'assistance Disx mod pour obtenir de l'aide!",
+  "sysmsg.disx.error_api_no_response": "Erreur Disx: Impossible d'accéder à WWW2PCM-API! Il se peut qu'il soit hors ligne. Contactez l'administrateur du serveur ou le support technique de Disx pour obtenir de l'aide.",
+  "sysmsg.disx.error_api_took_too_long": "Erreur Disx: Délai d'attente dépassé pour la requête WWW2PCM-API! Voulez-vous réessayer?",
+  "sysmsg.disx.error_concurrent_audio": "Erreur Disx: Un fichier audio est déjà en cours de lecture à cet emplacement!",
+  "sysmsg.disx.error_bad_url": "Erreur Disx: URL incorrecte détectée. Êtes-vous sûr qu'elle est correcte?"
 }

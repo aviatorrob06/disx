@@ -2,7 +2,6 @@ package xyz.ar06.disx.blocks;
 
 import dev.architectury.registry.CreativeTabRegistry;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.util.RandomSource;
 import xyz.ar06.disx.DisxCreativeModeTabAssembly;
 import xyz.ar06.disx.DisxLogger;
@@ -23,7 +22,6 @@ import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.flag.FeatureFlagSet;
 import net.minecraft.world.item.BlockItem;
-import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
@@ -228,7 +226,7 @@ public class DisxStampMaker extends BaseEntityBlock {
                     tickCounter++;
                     if (tickCounter == 4){
                         tickCounter = 0;
-                        level.playSound(Minecraft.getInstance().player, blockPos, SoundEvents.UI_LOOM_SELECT_PATTERN, SoundSource.BLOCKS);
+                        level.playSound(null, blockPos, SoundEvents.UI_LOOM_SELECT_PATTERN, SoundSource.BLOCKS);
                     }
                 } else {
                     tickCounter = 0;

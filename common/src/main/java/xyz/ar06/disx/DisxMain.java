@@ -1,6 +1,5 @@
 package xyz.ar06.disx;
 
-import dev.architectury.event.events.client.ClientLifecycleEvent;
 import dev.architectury.event.events.common.*;
 import dev.architectury.utils.Env;
 import net.minecraft.sounds.SoundEvent;
@@ -153,7 +152,5 @@ public class DisxMain {
 
         DisxLogger.info("Success in Mod Launch (SERVER)");
 
-        //Assemble creative mode tab
-        ClientLifecycleEvent.CLIENT_STARTED.register(DisxCreativeModeTabAssembly::addItems);
     }
 }

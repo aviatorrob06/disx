@@ -117,5 +117,16 @@
   "sysmsg.disx.configcmd.generatedrefreshtoken": "リフレッシュトークンは自動的に生成され、保存されました。",
   "sysmsg.disx.configcmd.generaterefreshtokeninstructions": "Refresh Tokenジェネレーター： サブのGoogleアカウントで以下のURLにアクセスし、コードを入力してください。",
   "sysmsg.disx.configcmd.generaterefreshtokencode": "コード(クリックしてコピー)：",
-  "sysmsg.disx.configcmd.clearedrefreshtoken": "リフレッシュトークンは正常にクリアされました。"
+  "sysmsg.disx.configcmd.clearedrefreshtoken": "リフレッシュトークンは正常にクリアされました。",
+  "enchantment.disx.retrograde_curse": "Disx 逆行の呪い",
+  "enchantment.disx.tempo_curse": "Disx テンポのリズム",
+  "enchantment.disx.resonance_curse": "Disx 共鳴のリズム",
+  "sysmsg.disx.error_api_ratelimit": "Disx エラー：サーバーへのリクエスト回数制限を超えました。1分ほど待ってから、もう一度お試しください。",
+  "sysmsg.disx.error_api_bad_request": "Disx エラー：WWW2PCM-API リクエストに不備があります！詳細については、サーバーのログを確認してください。",
+  "sysmsg.disx.error_api_request_forbidden": "Disx エラー：WWW2PCM-API リクエストが無効です！詳細については、サーバーのログを確認してください。",
+  "sysmsg.disx.error_api_internal_error": "Disx エラー：WWW2PCM-API で内部的な不具合が発生しました。この状態が続く場合は、Disx mod のサポートにお問い合わせください！",
+  "sysmsg.disx.error_api_no_response": "Disx エラー：WWW2PCM-API に接続できません！オフラインになっている可能性があります。サーバー管理者または Disx mod サポートにお問い合わせください。",
+  "sysmsg.disx.error_api_took_too_long": "Disx エラー：WWW2PCM-APIのリクエストがタイムアウトしました！再試行しますか？",
+  "sysmsg.disx.error_concurrent_audio": "Disx エラー：その場所で既に音声が再生されています！",
+  "sysmsg.disx.error_bad_url": "Disx エラー：不正なURLが検出されました。本当に正しいURLですか？"
 }

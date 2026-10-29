@@ -13,9 +13,9 @@ import java.util.HashMap;
 
 public class DisxModInfo {
     //MANUAL MANIPULATIVES
-    private static final String VERSION = "0.4.0-dev-0bad223d";
-    private static final boolean DEV_BUILD = true;
-    private static final boolean FORCE_DEBUG = true;
+    private static final String VERSION = "0.4.0";
+    private static final boolean DEV_BUILD = false;
+    private static final boolean FORCE_DEBUG = false;
     private static final String[] debugKeys = new String[]{
             "skibidi gooning",
             "uninstall brainrot.exe"
