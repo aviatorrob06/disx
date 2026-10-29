@@ -6,6 +6,8 @@ import net.minecraft.world.level.block.Blocks;
 import xyz.ar06.disx.DisxLogger;
 import xyz.ar06.disx.DisxMain;
 import xyz.ar06.disx.DisxSystemMessages;
+import xyz.ar06.disx.exceptions.DisxException;
+import xyz.ar06.disx.exceptions.DisxMissingNBTException;
 import xyz.ar06.disx.items.DisxBlankDisc;
 import xyz.ar06.disx.items.DisxCustomDisc;
 import xyz.ar06.disx.items.DisxRecordStamp;
@@ -29,6 +31,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
+import xyz.ar06.disx.utils.DisxWWW2PCMSourceType;
 
 import java.util.HashMap;
 import java.util.Optional;
@@ -70,10 +73,29 @@ public class DisxRecordPressEntity extends BlockEntity implements Container, Wor
             ItemStack recordStamp = this.items.get(1);
             if (!recordStamp.isEmpty()){
                 CompoundTag stampTag = recordStamp.getTag();
-                String videoId = stampTag.getString("videoId");
-                String videoName = stampTag.getString("videoName");
-                if (videoId.isBlank() || videoName.isBlank()){
-                    throw new RuntimeException("[Disx Record Press] No video id found on provided record stamp!");
+                //Legacy YT-Only source compatibility
+                if (stampTag.contains("videoId")){
+                    String videoId = stampTag.getString("videoId");
+                    if (!videoId.contains("http://")){
+                        videoId = "https://www.youtube.com/watch?v=" + videoId;
+                    }
+                    stampTag.putString("mediaUrl", videoId);
+                    stampTag.remove("videoId");
+                    recordStamp.setTag(stampTag);
+                }
+                if (stampTag.contains("videoName")){
+                    String videoName = stampTag.getString("videoName");
+                    stampTag.putString("mediaName", videoName);
+                    stampTag.remove("videoName");
+                    recordStamp.setTag(stampTag);
+                }
+                String mediaUrl = stampTag.getString("mediaUrl");
+                String mediaName = stampTag.getString("mediaName");
+
+                if (mediaUrl.isBlank() || mediaName.isBlank()){
+                    DisxException exception = new DisxMissingNBTException("No audio data found on provided record stamp!");
+                    DisxLogger.error(exception);
+                    throw exception;
                 } else {
                     ItemStack modifiedRecordStamp = this.items.get(1).copyWithCount(1);
                     modifiedRecordStamp.setDamageValue(modifiedRecordStamp.getDamageValue() + 1);
@@ -89,8 +111,8 @@ public class DisxRecordPressEntity extends BlockEntity implements Container, Wor
                      */
                     ItemStack record = getRecordVariant();
                     CompoundTag compoundTag = new CompoundTag();
-                    compoundTag.putString("videoId", videoId);
-                    compoundTag.putString("discName", videoName);
+                    compoundTag.putString("mediaUrl", mediaUrl);
+                    compoundTag.putString("discName", mediaName);
                     record.setTag(compoundTag);
                     BlockPos blockPos = getBlockPos();
                     if (level.getBlockState(blockPos.below()).is(Blocks.HOPPER)){

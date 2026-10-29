@@ -1,33 +1,27 @@
 package xyz.ar06.disx.blocks;
 
+import dev.architectury.registry.CreativeTabRegistry;
+import net.minecraft.client.Minecraft;
+import net.minecraft.util.RandomSource;
+import xyz.ar06.disx.DisxCreativeModeTabAssembly;
 import xyz.ar06.disx.DisxLogger;
-import xyz.ar06.disx.DisxMain;
 import xyz.ar06.disx.DisxServerPacketIndex;
 import xyz.ar06.disx.entities.DisxStampMakerEntity;
-import dev.architectury.networking.NetworkManager;
-import dev.architectury.platform.Platform;
 import dev.architectury.registry.registries.Registrar;
 import dev.architectury.registry.registries.RegistrySupplier;
-import net.fabricmc.api.EnvType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.entity.Display;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.flag.FeatureFlagSet;
 import net.minecraft.world.item.BlockItem;
-import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
@@ -43,20 +37,15 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
-import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
-import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.level.gameevent.GameEventListener;
 import net.minecraft.world.phys.BlockHitResult;
-import net.minecraft.world.phys.shapes.BooleanOp;
 import net.minecraft.world.phys.shapes.CollisionContext;
-import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static xyz.ar06.disx.DisxMain.REGISTRAR_MANAGER;
 import static xyz.ar06.disx.blocks.DisxStampMakerShapes.*;
 
 public class DisxStampMaker extends BaseEntityBlock {
@@ -76,7 +65,7 @@ public class DisxStampMaker extends BaseEntityBlock {
     static VoxelShape blockShape180 = makeShape180();
     static VoxelShape blockShape270 = makeShape270();
 
-    public String videoId;
+    private int tickCounter = 0;
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
@@ -142,7 +131,7 @@ public class DisxStampMaker extends BaseEntityBlock {
                 DisxLogger.debug("Level is client side and player is holding lacquer block");
                 if (player.isCrouching()){
                     DisxLogger.debug("Player is crouching; opening video id gui");
-                    DisxServerPacketIndex.ServerPackets.openVideoIdScreen(player, blockHitResult.getBlockPos());
+                    DisxServerPacketIndex.ServerPackets.openMediaUrlScreen(player, blockHitResult.getBlockPos());
                     return InteractionResult.SUCCESS;
                 } else if (blockEntity.getItem(0).isEmpty()){
                     DisxLogger.debug("Player is not crouching; putting in Lacquer Block");
@@ -159,7 +148,7 @@ public class DisxStampMaker extends BaseEntityBlock {
                 DisxLogger.debug("Level is not client side");
                 if (player.isCrouching()){
                     DisxLogger.debug("Player is crouching; opening video id gui");
-                    DisxServerPacketIndex.ServerPackets.openVideoIdScreen(player, blockPos);
+                    DisxServerPacketIndex.ServerPackets.openMediaUrlScreen(player, blockPos);
                     return InteractionResult.SUCCESS;
                 } else if (itemStack.isEmpty()){
                     DisxLogger.debug("Main hand item is empty; checking if lacquer block is in already");
@@ -180,7 +169,7 @@ public class DisxStampMaker extends BaseEntityBlock {
             DisxLogger.debug("Hand is off hand and level is not client side");
             if (player.isCrouching()){
                 DisxLogger.debug("Player is crouching; opening video id gui");
-                DisxServerPacketIndex.ServerPackets.openVideoIdScreen(player, blockPos);
+                DisxServerPacketIndex.ServerPackets.openMediaUrlScreen(player, blockPos);
                 return InteractionResult.SUCCESS;
             }
         }
@@ -227,6 +216,26 @@ public class DisxStampMaker extends BaseEntityBlock {
         return super.getTicker(level, blockState, blockEntityType);
     }
 
+
+    @Override
+    public void animateTick(BlockState blockState, Level level, BlockPos blockPos, RandomSource randomSource) {
+        if (level.isClientSide()) {
+            BlockEntity blockEntity = level.getBlockEntity(blockPos);
+            if (blockEntity instanceof DisxStampMakerEntity stampMakerEntity){
+                if (stampMakerEntity.isProcessing()){
+                    tickCounter++;
+                    if (tickCounter == 4){
+                        tickCounter = 0;
+                        level.playSound(null, blockPos, SoundEvents.UI_LOOM_SELECT_PATTERN, SoundSource.BLOCKS);
+                    }
+                } else {
+                    tickCounter = 0;
+                }
+            }
+        }
+        super.animateTick(blockState, level, blockPos, randomSource);
+    }
+
     @Nullable
     @Override
     public <T extends BlockEntity> GameEventListener getListener(ServerLevel serverLevel, T blockEntity) {
@@ -252,10 +261,17 @@ public class DisxStampMaker extends BaseEntityBlock {
         blockRegistration = blockRegistrar.register(new ResourceLocation("disx", "stamp_maker"), () -> new DisxStampMaker(BlockBehaviour.Properties.copy(Blocks.PISTON)));
     }
 
-    public static void registerBlockItem(Registrar<Item> itemRegistrar, RegistrySupplier<CreativeModeTab> tab){
+    public static void registerBlockItem(Registrar<Item> itemRegistrar){
         itemRegistration = itemRegistrar.register(
                 (new ResourceLocation("disx", "stamp_maker")),
-                () -> new BlockItem(blockRegistration.get(), new Item.Properties().arch$tab(tab)));
+                () -> new BlockItem(blockRegistration.get(), new Item.Properties()));
+    }
+
+    public static void registerTabItem(){
+        CreativeTabRegistry.appendBuiltinStack(
+                DisxCreativeModeTabAssembly.CREATIVE_MODE_TAB.get(),
+                new ItemStack(itemRegistration.get())
+        );
     }
 
     public static void registerBlockEntity(Registrar<BlockEntityType<?>> blockEntityRegistrar){

@@ -1,11 +1,11 @@
 package xyz.ar06.disx.entities;
 
-import net.minecraft.ChatFormatting;
 import net.minecraft.core.Direction;
-import net.minecraft.network.chat.Component;
 import net.minecraft.world.WorldlyContainer;
+import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import org.jetbrains.annotations.Nullable;
 import xyz.ar06.disx.*;
+import xyz.ar06.disx.audio_filters.DisxAudioFilterType;
 import xyz.ar06.disx.blocks.DisxAdvancedJukebox;
 import dev.architectury.registry.registries.Registrar;
 import dev.architectury.registry.registries.RegistrySupplier;
@@ -21,9 +21,12 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.ticks.ContainerSingleItem;
+import xyz.ar06.disx.enchantments.DisxDiscEnchantmentHelper;
+import xyz.ar06.disx.enchantments.DisxRetrogradeCurseEnchantment;
+import xyz.ar06.disx.enchantments.DisxTempoEnchantment;
 import xyz.ar06.disx.items.DisxCustomDisc;
-import xyz.ar06.disx.utils.DisxYoutubeInfoScraper;
 
+import java.util.ArrayList;
 import java.util.UUID;
 
 public class DisxAdvancedJukeboxEntity extends BlockEntity implements ContainerSingleItem, WorldlyContainer {
@@ -83,12 +86,40 @@ public class DisxAdvancedJukeboxEntity extends BlockEntity implements ContainerS
 
     @Override
     public void setItem(int i, ItemStack itemStack) {
-        if (i == 0 && itemStack.getItem() instanceof DisxCustomDisc){
+        CompoundTag stackTag = itemStack.getTag();
+        if (i == 0 && itemStack.getItem() instanceof DisxCustomDisc && stackTag.contains("mediaUrl")){
+            //legacy YT-Only source compatibility
+            if (stackTag.contains("videoId")){
+                String videoId = stackTag.getString("videoId");
+                if (!videoId.contains("http")){
+                    videoId = "https://www.youtube.com/watch?v=" + videoId;
+                }
+                stackTag.putString("mediaUrl", videoId);
+                stackTag.remove("videoId");
+                itemStack.setTag(stackTag);
+            }
+            String mediaUrl = itemStack.getTag().getString("mediaUrl");
             itemInventory.set(i, itemStack);
-            String videoId = itemStack.getTag().getString("videoId");
             int jukeboxPower = this.getLevel().getBestNeighborSignal(this.getBlockPos());
             boolean loop = jukeboxPower > 0;
-            DisxServerAudioRegistry.addToRegistry(this.getBlockPos(), videoId, null, level.dimension(), loop, DisxAudioMotionType.STATIC, new UUID(0L, 0L));
+            ArrayList<DisxAudioFilterType> audioFilters = new ArrayList<DisxAudioFilterType>();
+            int rogueRadius = -1;
+
+            if (EnchantmentHelper.getItemEnchantmentLevel(DisxRetrogradeCurseEnchantment.enchantmentRegistration.get(), itemStack) > 0){
+                audioFilters.add(DisxAudioFilterType.REVERSE);
+                DisxLogger.debug("Detected REVERSE curse on disc, adding to audioFilter array");
+            }
+            int tempoEnchantmentLevel = EnchantmentHelper.getItemEnchantmentLevel(DisxTempoEnchantment.enchantmentRegistration.get(), itemStack);
+            if (tempoEnchantmentLevel > 0){
+                DisxLogger.debug("Detected TEMPO curse on disc, adding to audioFilter array");
+                switch (tempoEnchantmentLevel){
+                    case 1 -> audioFilters.add(DisxAudioFilterType.TEMPO_1);
+                    case 2 -> audioFilters.add(DisxAudioFilterType.TEMPO_2);
+                    case 3 -> audioFilters.add(DisxAudioFilterType.TEMPO_3);
+                };
+            }
+
+            DisxServerAudioRegistry.addToRegistry(this.getBlockPos(), mediaUrl, null, level.getServer(), level.dimension(), loop, DisxAudioMotionType.STATIC, new UUID(0L, 0L), rogueRadius, audioFilters);
         } else {
             itemInventory.set(i, itemStack);
         }
@@ -96,12 +127,26 @@ public class DisxAdvancedJukeboxEntity extends BlockEntity implements ContainerS
     }
 
     public void setItem(int i, ItemStack itemStack, Player player) {
-        if (i == 0 && itemStack.getItem() instanceof DisxCustomDisc){
+        CompoundTag stackTag = itemStack.getTag();
+        if (i == 0 && itemStack.getItem() instanceof DisxCustomDisc && stackTag.contains("mediaUrl")){
+            //legacy YT-Only source compatibility
+            if (stackTag.contains("videoId")){
+                String videoId = stackTag.getString("videoId");
+                if (!videoId.contains("http")){
+                    videoId = "https://www.youtube.com/watch?v=" + videoId;
+                }
+                stackTag.putString("mediaUrl", videoId);
+                stackTag.remove("videoId");
+                itemStack.setTag(stackTag);
+            }
+            String mediaUrl = itemStack.getTag().getString("mediaUrl");
             itemInventory.set(i, itemStack);
-            String videoId = itemStack.getTag().getString("videoId");
             int jukeboxPower = this.getLevel().getBestNeighborSignal(this.getBlockPos());
             boolean loop = jukeboxPower > 0;
-            DisxServerAudioRegistry.addToRegistry(this.getBlockPos(), videoId, player, level.dimension(), loop, DisxAudioMotionType.STATIC, new UUID(0L, 0L));
+            ArrayList<DisxAudioFilterType> audioFilters = DisxDiscEnchantmentHelper.buildAudioFilterArray(itemStack);
+            int rogueRadius = -1;
+
+            DisxServerAudioRegistry.addToRegistry(this.getBlockPos(), mediaUrl, player, level.getServer(), level.dimension(), loop, DisxAudioMotionType.STATIC, new UUID(0L, 0L), rogueRadius, audioFilters);
         } else {
             itemInventory.set(i, itemStack);
         }
@@ -111,33 +156,6 @@ public class DisxAdvancedJukeboxEntity extends BlockEntity implements ContainerS
     @Override
     public boolean stillValid(Player player) {
         return false;
-    }
-
-    public void tryGetUpdatedDiscName(Player player){
-        ItemStack discStack = this.itemInventory.get(0);
-        if (!discStack.isEmpty()){
-            CompoundTag compoundTag = discStack.getTag();
-            DisxLogger.debug("Found disc in jukebox, checking name");
-            String discName = compoundTag.getString("discName");
-            String videoId = compoundTag.getString("videoId");
-            if (discName.equals("Video Not Found")){
-                DisxLogger.debug("Disc has no name. Attempting to find one...");
-                String videoName = DisxYoutubeInfoScraper.scrapeTitle(videoId);
-                if (!videoName.equals("Video Not Found")){
-                    DisxLogger.debug("Found updated name: " + videoName);
-                    compoundTag.putString("discName", videoName);
-                    if (discStack.equals(this.itemInventory.get(0))){
-                        DisxLogger.debug("Disc stack still the same in Advanced Jukebox, setting updated nbt tag");
-                        discStack.setTag(compoundTag);
-                        player.sendSystemMessage(Component.translatable("sysmsg.disx.updated_disc_name", "Advanced Jukebox"));
-                        player.sendSystemMessage(Component.translatable("sysmsg.disx.updated_disc_name.name", videoName).withStyle(ChatFormatting.GRAY));
-                    }
-                } else {
-                    DisxLogger.debug("Video name not found once more");
-                }
-            }
-        }
-
     }
 
     @Override
@@ -153,7 +171,7 @@ public class DisxAdvancedJukeboxEntity extends BlockEntity implements ContainerS
 
     @Override
     public boolean canPlaceItemThroughFace(int i, ItemStack itemStack, @Nullable Direction direction) {
-        if (itemStack.getItem() instanceof DisxCustomDisc && direction.equals(Direction.UP)){
+        if (itemStack.getItem() instanceof DisxCustomDisc && direction.equals(Direction.UP) && itemStack.getTag().contains("mediaUrl")){
             return true;
         }
         return false;
@@ -161,7 +179,7 @@ public class DisxAdvancedJukeboxEntity extends BlockEntity implements ContainerS
 
     @Override
     public boolean canTakeItemThroughFace(int i, ItemStack itemStack, Direction direction) {
-        if (direction.equals(Direction.DOWN) && !this.isRecordPlaying()){
+        if (direction.equals(Direction.DOWN) && !this.isRecordPlaying() && itemStack.getTag().contains("mediaUrl")){
             return true;
         }
         return false;

@@ -35,7 +35,7 @@ public class DisxCheckButton extends AbstractButton {
     public void onPress() {
         if(Platform.getEnvironment().equals(Env.CLIENT)){
             Minecraft.getInstance().setScreen(null);
-            DisxClientPacketIndex.ClientPackets.pushVideoId(DisxStampMakerGUI.textBoxValue, DisxStampMakerGUI.pos);
+            DisxClientPacketIndex.ClientPackets.pushMediaUrl(DisxStampMakerGUI.textBoxValue, DisxStampMakerGUI.pos);
             DisxStampMakerGUI.textBoxValue = null;
         }
     }

@@ -18,19 +18,21 @@ import org.slf4j.LoggerFactory;
 
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Environment(EnvType.CLIENT)
 public class DisxClientPacketIndex  {
 
     static Logger logger = LoggerFactory.getLogger("disx");
     public static void registerClientPacketReceivers() {
-        //NetworkManager.registerReceiver(NetworkManager.Side.S2C, new ResourceLocation("disx","audioplayerplayevent"), (ClientPacketReceivers::receiveAudioPlayerPlayEvent));
         NetworkManager.registerReceiver(NetworkManager.Side.S2C, new ResourceLocation("disx","serveraudioregistryevent"), (ClientPacketReceivers::receiveServerAudioRegistryEvent));
-        NetworkManager.registerReceiver(NetworkManager.Side.S2C, new ResourceLocation("disx","playingvidmsg"), (ClientPacketReceivers::receiveLoadedMsgEvent));
-        NetworkManager.registerReceiver(NetworkManager.Side.S2C, new ResourceLocation("disx","openvideoidscreen"), (ClientPacketReceivers::receiveOpenVideoIdScreenEvent));
+        NetworkManager.registerReceiver(NetworkManager.Side.S2C, new ResourceLocation("disx","playingmediamsg"), (ClientPacketReceivers::receiveLoadedMsgEvent));
+        NetworkManager.registerReceiver(NetworkManager.Side.S2C, new ResourceLocation("disx","openmediaurlscreen"), (ClientPacketReceivers::receiveOpenMediaUrlScreenEvent));
         NetworkManager.registerReceiver(NetworkManager.Side.S2C, new ResourceLocation("disx", "muteplayer"), ClientPacketReceivers::receivePlayerMute);
         NetworkManager.registerReceiver(NetworkManager.Side.S2C, new ResourceLocation("disx","audiodata"), ClientPacketReceivers::receiveAudioData);
-        NetworkManager.registerReceiver(NetworkManager.Side.S2C, new ResourceLocation("disx","loadingvidmsg"), ClientPacketReceivers::receiveLoadingMsgEvent);
+        NetworkManager.registerReceiver(NetworkManager.Side.S2C, new ResourceLocation("disx","loadingmediamsg"), ClientPacketReceivers::receiveLoadingMsgEvent);
         NetworkManager.registerReceiver(NetworkManager.Side.S2C, new ResourceLocation("disx","loopmsg"), ClientPacketReceivers::receiveLoopMsg);
         NetworkManager.registerReceiver(NetworkManager.Side.S2C, new ResourceLocation("disx","pausemsg"), ClientPacketReceivers::receivePauseMsg);
         NetworkManager.registerReceiver(NetworkManager.Side.S2C, new ResourceLocation("disx", "configinfo"), ClientPacketReceivers::receiveConfigInfo);
@@ -66,10 +68,11 @@ public class DisxClientPacketIndex  {
                 motionType = null;
             }
             UUID entityUuid = buf.readUUID();
+            int rogueRadius = buf.readInt();
             if (type.equals("add")){
                 DisxLogger.debug("calling for add");
                 CompletableFuture.runAsync(() -> {
-                    DisxAudioInstanceRegistry.newAudioPlayer(blockPos, dimensionLocation, instanceOwner, loop, preferredVolume, motionType, entityUuid);
+                    DisxAudioInstanceRegistry.newAudioPlayer(blockPos, dimensionLocation, instanceOwner, loop, preferredVolume, motionType, entityUuid, rogueRadius);
                 });
             }
             if (type.equals("remove")){
@@ -85,26 +88,26 @@ public class DisxClientPacketIndex  {
             if (type.equals("modify")){
                 CompletableFuture.runAsync(() -> {
                     if (motionType.equals(DisxAudioMotionType.LIVE)){
-                        DisxAudioInstanceRegistry.modifyAudioInstance(entityUuid, loop, preferredVolume);
+                        DisxAudioInstanceRegistry.modifyAudioInstance(entityUuid, loop, preferredVolume, rogueRadius);
                     } else {
-                        DisxAudioInstanceRegistry.modifyAudioInstance(blockPos, dimensionLocation, loop, preferredVolume);
+                        DisxAudioInstanceRegistry.modifyAudioInstance(blockPos, dimensionLocation, loop, preferredVolume, rogueRadius);
                     }
                 });
             }
         }
 
         public static void receiveLoadedMsgEvent(FriendlyByteBuf buf, NetworkManager.PacketContext context){
-            String videoId = buf.readUtf();
-            DisxLogger.debug("Sending playing video message");
-            DisxSystemMessages.playingVideo(videoId);
+            String mediaUrl = buf.readUtf();
+            DisxLogger.debug("Sending playing media message");
+            DisxSystemMessages.playingMedia(mediaUrl);
         }
 
         public static void receiveLoadingMsgEvent(FriendlyByteBuf buf, NetworkManager.PacketContext context){
-            String videoId = buf.readUtf();
-            DisxSystemMessages.loadingVideo(videoId);
+            String mediaUrl = buf.readUtf();
+            DisxSystemMessages.loadingMedia(mediaUrl);
         }
 
-        public static void receiveOpenVideoIdScreenEvent(FriendlyByteBuf buf, NetworkManager.PacketContext context){
+        public static void receiveOpenMediaUrlScreenEvent(FriendlyByteBuf buf, NetworkManager.PacketContext context){
             BlockPos blockPos = buf.readBlockPos();
             Minecraft.getInstance().execute(() -> {
                 DisxStampMakerGUI.setScreen(blockPos);
@@ -121,24 +124,44 @@ public class DisxClientPacketIndex  {
             }
         }
 
+        private static final AtomicInteger threadCounter = new AtomicInteger(1);
+        private static final ExecutorService audioReadExecutor =
+                Executors.newCachedThreadPool(runnable -> {
+                    Thread thread = new Thread(
+                            runnable,
+                            "Disx Audio-Read Thread-" + threadCounter.getAndIncrement()
+                    );
+
+                    thread.setDaemon(true);
+                    return thread;
+                });
+
         public static void receiveAudioData(FriendlyByteBuf buf, NetworkManager.PacketContext context){
-            DisxLogger.debug("audio data packet received");
-            if (!buf.isReadable()){
-                DisxLogger.error("No readable data found in received audio data packet!");
-                return;
-            }
-            BlockPos blockPos = buf.readBlockPos();
-            ResourceLocation dimension = buf.readResourceLocation();
-            String motionTypeUtf = buf.readUtf();
-            DisxAudioMotionType motionType;
-            if (!motionTypeUtf.isEmpty()){
-                motionType = DisxAudioMotionType.valueOf(motionTypeUtf);
-            } else {
-                motionType = DisxAudioMotionType.STATIC;
-            }
-            UUID entityUuid = buf.readUUID();
-            ByteBuf bufCopy = buf.copy();
-            CompletableFuture.runAsync(() -> DisxAudioInstanceRegistry.routeAudioData(bufCopy, blockPos, dimension, entityUuid, motionType));
+            int length = buf.readableBytes();
+            byte[] packet = new byte[length];
+            buf.readBytes(packet);
+            CompletableFuture.runAsync(() -> {
+                DisxLogger.debug("audio data packet received");
+                FriendlyByteBuf friendlyPacket = new FriendlyByteBuf(
+                        Unpooled.wrappedBuffer(packet)
+                );
+                if (!friendlyPacket.isReadable()){
+                    DisxLogger.error("No readable data found in received audio data packet!");
+                    return;
+                }
+                BlockPos blockPos = friendlyPacket.readBlockPos();
+                ResourceLocation dimension = friendlyPacket.readResourceLocation();
+                String motionTypeUtf = friendlyPacket.readUtf();
+                DisxAudioMotionType motionType;
+                if (!motionTypeUtf.isEmpty()){
+                    motionType = DisxAudioMotionType.valueOf(motionTypeUtf);
+                } else {
+                    motionType = DisxAudioMotionType.STATIC;
+                }
+                UUID entityUuid = friendlyPacket.readUUID();
+                //ByteBuf bufCopy = buf.copy();
+                DisxAudioInstanceRegistry.routeAudioData(friendlyPacket, blockPos, dimension, entityUuid, motionType);
+            }, audioReadExecutor);
         }
 
         public static void receiveLoopMsg(FriendlyByteBuf buf, NetworkManager.PacketContext context){
@@ -160,32 +183,23 @@ public class DisxClientPacketIndex  {
     }
 
     public class ClientPackets{
-        public static void playerSuccessStatus(String status, BlockPos blockPos, String videoId, Boolean fromSoundCommand, Boolean playerCanHear){
-            FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
-            buf.writeUtf(status);
-            buf.writeBlockPos(blockPos);
-            buf.writeUtf(videoId);
-            buf.writeBoolean(fromSoundCommand);
-            buf.writeBoolean(playerCanHear);
-            NetworkManager.sendToServer(new ResourceLocation("disx","playersuccessstatus"), buf);
-        }
 
         public static void getServerAudioRegistry(){
             FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
             NetworkManager.sendToServer(new ResourceLocation("disx","retrieveserveraudioregistry"), buf);
         }
 
-        public static void pushVideoId(String videoId, BlockPos blockPos){
+        public static void pushMediaUrl(String mediaUrl, BlockPos blockPos){
             FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
-            buf.writeUtf(videoId);
+            buf.writeUtf(mediaUrl);
             buf.writeBlockPos(blockPos);
             NetworkManager.sendToServer(
-                    new ResourceLocation("disx","videoidselection"),
+                    new ResourceLocation("disx","mediaurlselection"),
                     buf
             );
         }
 
-        public static void singleplayerTrackEnd(BlockPos blockPos, ResourceLocation dimension){
+        @Deprecated public static void singleplayerTrackEnd(BlockPos blockPos, ResourceLocation dimension){
             FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
             buf.writeBlockPos(blockPos);
             buf.writeResourceLocation(dimension);

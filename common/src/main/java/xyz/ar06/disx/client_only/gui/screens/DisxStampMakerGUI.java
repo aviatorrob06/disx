@@ -33,7 +33,7 @@ public class DisxStampMakerGUI extends Screen {
 
     public static void setScreen(BlockPos blockPos){
         if (Platform.getEnv().equals(EnvType.CLIENT)){
-            Minecraft.getInstance().setScreen(new DisxStampMakerGUI(Component.literal("Video Id Box")));
+            Minecraft.getInstance().setScreen(new DisxStampMakerGUI(Component.literal("Media URL Box")));
             pos = blockPos;
         }
     }
@@ -81,6 +81,7 @@ public class DisxStampMakerGUI extends Screen {
         if (this.textBoxValue != null){
             this.textBox.insertText(textBoxValue);
         }
+        this.textBox.setMaxLength(2048);
         addRenderableWidget(this.textBox);
     }
 
@@ -104,7 +105,7 @@ public class DisxStampMakerGUI extends Screen {
         );
         graphics.drawString(
                 Minecraft.getInstance().font,
-                Component.literal("Enter Video Id").withStyle(ChatFormatting.WHITE),
+                Component.literal("Enter Media URL").withStyle(ChatFormatting.WHITE),
                 ((graphics.guiWidth() - 257) / 2) + 8,
                 ((graphics.guiHeight() - 39) / 2) + 3,
                 3

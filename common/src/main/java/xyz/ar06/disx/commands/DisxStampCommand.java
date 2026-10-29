@@ -1,11 +1,10 @@
 package xyz.ar06.disx.commands;
 
-import net.minecraft.ChatFormatting;
+import xyz.ar06.disx.DisxLogger;
 import xyz.ar06.disx.DisxSystemMessages;
-import xyz.ar06.disx.config.DisxConfigHandler;
+import xyz.ar06.disx.exceptions.*;
 import xyz.ar06.disx.items.DisxRecordStamp;
-import xyz.ar06.disx.utils.DisxYoutubeInfoScraper;
-import xyz.ar06.disx.utils.DisxYoutubeTitleScraper;
+import xyz.ar06.disx.utils.DisxWWW2PCMReference;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
@@ -21,7 +20,6 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 
@@ -32,7 +30,7 @@ public class DisxStampCommand {
             dispatcher.register(Commands.literal("disxstamp")
                             .requires(commandSourceStack -> commandSourceStack.hasPermission(2))
                     .then(Commands.argument("player", EntityArgument.players())
-                            .then(Commands.argument("videoId", StringArgumentType.string())
+                            .then(Commands.argument("videoUrl", StringArgumentType.greedyString())
                                     .executes(DisxStampCommand::run))));
         }));
     }
@@ -48,7 +46,7 @@ public class DisxStampCommand {
     }
 
     private static void runAsync(CommandContext<CommandSourceStack> context){
-        String videoId = context.getArgument("videoId", String.class);
+        String videoId = context.getArgument("videoUrl", String.class);
         Collection<ServerPlayer> playerCollection;
         try {
             playerCollection = EntityArgument.getPlayers(context, "player");
@@ -57,37 +55,34 @@ public class DisxStampCommand {
             context.getSource().sendFailure(Component.translatable("sysmsg.disx.stampcmd.no_player_err"));
             throw new RuntimeException(e);
         }
-        ArrayList<String> title_and_length = DisxYoutubeInfoScraper.scrapeLengthAndTitle(videoId);
-        String videoName = title_and_length.get(0);
-        if (videoName.equals("Video Not Found") && DisxConfigHandler.SERVER.getProperty("video_existence_check").equals("true")) {
-            if (context.getSource().isPlayer()){
-                DisxSystemMessages.noVideoFound(context.getSource().getPlayer());
-            } else {
-                DisxSystemMessages.noVideoFound(context.getSource().getServer());
+        try {
+            DisxWWW2PCMReference www2PCMReference = new DisxWWW2PCMReference(videoId);
+            String videoName = www2PCMReference.probeTitle();
+            int videoLength = www2PCMReference.probeDuration();
+            if (videoLength > 1800) {
+                throw new DisxTooLongException("Duration: " + videoLength);
             }
-            return;
-        }
-        int videoLength = Integer.valueOf(title_and_length.get(1));
-        if (videoLength > 1800) {
-            if (context.getSource().isPlayer()){
-                DisxSystemMessages.badDuration(context.getSource().getPlayer());
-            } else {
-                DisxSystemMessages.badDuration(context.getSource().getServer());
+            Item item = DisxRecordStamp.getItemRegistration().get();
+            ItemStack recordStampStack = new ItemStack(item);
+            recordStampStack.setCount(1);
+            CompoundTag tag = new CompoundTag();
+            tag.putString("videoId", videoId);
+            tag.putString("videoName", videoName);
+            recordStampStack.setTag(tag);
+            for (ServerPlayer plr : playerCollection){
+                plr.playNotifySound(SoundEvents.UI_CARTOGRAPHY_TABLE_TAKE_RESULT, SoundSource.MASTER, 1, 1);
+                plr.playNotifySound(SoundEvents.EXPERIENCE_ORB_PICKUP, SoundSource.MASTER, 1f, 1f);
+                plr.addItem(recordStampStack);
             }
-            return;
+            context.getSource().sendSystemMessage(Component.translatable("sysmsg.disx.stampcmd.success"));
+        } catch (DisxException e){
+            if (context.getSource().isPlayer()){
+                DisxSystemMessages.disxError(context.getSource().getPlayer(), e);
+            } else {
+                DisxSystemMessages.disxError(context.getSource().getServer(), e);
+            }
+            DisxLogger.error(e);
         }
-        Item item = DisxRecordStamp.getItemRegistration().get();
-        ItemStack recordStampStack = new ItemStack(item);
-        recordStampStack.setCount(1);
-        CompoundTag tag = new CompoundTag();
-        tag.putString("videoId", videoId);
-        tag.putString("videoName", videoName);
-        recordStampStack.setTag(tag);
-        for (ServerPlayer plr : playerCollection){
-            plr.playNotifySound(SoundEvents.UI_CARTOGRAPHY_TABLE_TAKE_RESULT, SoundSource.MASTER, 1, 1);
-            plr.playNotifySound(SoundEvents.EXPERIENCE_ORB_PICKUP, SoundSource.MASTER, 1f, 1f);
-            plr.addItem(recordStampStack);
-        }
-        context.getSource().sendSystemMessage(Component.translatable("sysmsg.disx.stampcmd.success"));
+
     }
 }

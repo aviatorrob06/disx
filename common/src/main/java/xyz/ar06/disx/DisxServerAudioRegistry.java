@@ -1,12 +1,15 @@
 package xyz.ar06.disx;
 
-import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
+import xyz.ar06.disx.audio_filters.DisxAudioFilterType;
+import xyz.ar06.disx.config.DisxConfigHandler;
+import xyz.ar06.disx.exceptions.*;
+import xyz.ar06.disx.utils.DisxInternetCheck;
 
 import java.util.*;
 
@@ -16,42 +19,42 @@ public class DisxServerAudioRegistry {
     public static LinkedList<DisxAudioStreamingNode> registry = new LinkedList<>();
 
     //Default variant
-    public static void addToRegistry(BlockPos pos, String videoId, Player player, ResourceKey<Level> dimension, boolean loop, DisxAudioMotionType motionType, UUID entityUuid){
+    public static void addToRegistry(BlockPos pos, String mediaUrl, Player player, MinecraftServer minecraftServer, ResourceKey<Level> dimension, boolean loop, DisxAudioMotionType motionType, UUID entityUuid, int rogueRadius, ArrayList<DisxAudioFilterType> audioFilters){
         ResourceLocation dimensionLocation = dimension.location();
         if (player != null){
-            DisxSystemMessages.playingAtLocation(player.getServer(), player.getName().getString(), pos, videoId, dimensionLocation);
+            DisxSystemMessages.playingAtLocation(minecraftServer, player.getName().getString(), pos, mediaUrl, dimensionLocation);
         }
-        registry.add(new DisxAudioStreamingNode(videoId, pos, dimensionLocation, player, loop, 0, motionType, entityUuid));
+        registry.add(new DisxAudioStreamingNode(mediaUrl, pos, minecraftServer, dimensionLocation, player, loop, 0, motionType, entityUuid, rogueRadius, audioFilters));
         if (player == null){
             players.forEach(plr -> {
-                DisxServerPacketIndex.ServerPackets.AudioRegistrySyncPackets.add(plr, pos, dimensionLocation, new UUID(0L, 0L), loop, 100, motionType, entityUuid);
+                DisxServerPacketIndex.ServerPackets.AudioRegistrySyncPackets.add(plr, pos, dimensionLocation, new UUID(0L, 0L), loop, 100, motionType, entityUuid, rogueRadius);
             });
         } else {
             players.forEach(plr -> {
-                DisxServerPacketIndex.ServerPackets.AudioRegistrySyncPackets.add(plr, pos, dimensionLocation, player.getUUID(), loop, 100, motionType, entityUuid);
+                DisxServerPacketIndex.ServerPackets.AudioRegistrySyncPackets.add(plr, pos, dimensionLocation, player.getUUID(), loop, 100, motionType, entityUuid, rogueRadius);
             });
         }
 
     }
 
     //Variant for Sound Command - Takes server, dimension as resourcelocation, and start time
-    public static void addToRegistry(BlockPos pos, String videoId, Player player, MinecraftServer server, ResourceLocation dimension, int startTime, boolean loop, int volume){
+    public static void addToRegistry(BlockPos pos, String mediaUrl, Player player, MinecraftServer server, ResourceLocation dimension, int startTime, boolean loop, int volume, int rogueRadius, ArrayList<DisxAudioFilterType> audioFilters){
         ResourceLocation dimensionLocation = dimension;
         if (player != null){
-            DisxSystemMessages.playingAtLocation(server, player.getName().getString(), pos, videoId, dimensionLocation);
-            registry.add(new DisxAudioStreamingNode(videoId, pos, dimensionLocation, player, loop, startTime, DisxAudioMotionType.STATIC, new UUID(0L, 0L)));
+            DisxSystemMessages.playingAtLocation(server, player.getName().getString(), pos, mediaUrl, dimensionLocation);
+            registry.add(new DisxAudioStreamingNode(mediaUrl, pos, server, dimensionLocation, player, loop, startTime, DisxAudioMotionType.STATIC, new UUID(0L, 0L), rogueRadius, audioFilters));
         } else {
-            DisxSystemMessages.playingAtLocation(server, "Server", pos, videoId, dimensionLocation);
-            registry.add(new DisxAudioStreamingNode(videoId, pos, dimensionLocation, null, loop, startTime, DisxAudioMotionType.STATIC, new UUID(0L, 0L)));
+            DisxSystemMessages.playingAtLocation(server, "Server", pos, mediaUrl, dimensionLocation);
+            registry.add(new DisxAudioStreamingNode(mediaUrl, pos, server, dimensionLocation, null, loop, startTime, DisxAudioMotionType.STATIC, new UUID(0L, 0L), rogueRadius, audioFilters));
         }
 
         if (player == null){
             players.forEach(plr -> {
-                DisxServerPacketIndex.ServerPackets.AudioRegistrySyncPackets.add(plr, pos, dimensionLocation, new UUID(0L, 0L), loop, volume, DisxAudioMotionType.STATIC, new UUID(0L, 0L));
+                DisxServerPacketIndex.ServerPackets.AudioRegistrySyncPackets.add(plr, pos, dimensionLocation, new UUID(0L, 0L), loop, volume, DisxAudioMotionType.STATIC, new UUID(0L, 0L), -1);
             });
         } else {
             players.forEach(plr -> {
-                DisxServerPacketIndex.ServerPackets.AudioRegistrySyncPackets.add(plr, pos, dimensionLocation, player.getUUID(), loop, volume, DisxAudioMotionType.STATIC, new UUID(0L, 0L));
+                DisxServerPacketIndex.ServerPackets.AudioRegistrySyncPackets.add(plr, pos, dimensionLocation, player.getUUID(), loop, volume, DisxAudioMotionType.STATIC, new UUID(0L, 0L), -1);
             });
         }
 
@@ -267,6 +270,26 @@ public class DisxServerAudioRegistry {
                     DisxServerPacketIndex.ServerPackets.AudioRegistrySyncPackets.modifyPrefVolume(player, BlockPos.ZERO, new ResourceLocation("", ""), modifiedVol, DisxAudioMotionType.LIVE, entityUuid);
                 }
             }
+        }
+    }
+
+    public static void checkAudioPrerequisiteChecks(Player player, Level level){
+        if (!DisxInternetCheck.checkInternet()){
+            throw new DisxNoInternetException("No internet!");
+        }
+        if (DisxConfigHandler.SERVER.isOnUseBlacklist(player.getUUID())){
+            throw new DisxPlayerBlacklistedException("Player blacklisted!");
+        }
+        if (!DisxConfigHandler.SERVER.isOnUseWhitelist(player.getUUID())){
+            throw new DisxPlayerNotWhitelistedException("Player not on whitelist; use-whitelist is enabled!");
+        }
+        if (DisxConfigHandler.SERVER.isOnDimensionBlacklist(level.dimension())){
+            throw new DisxDimensionBlacklistedException("Dimension is blacklisted from audio-playing!");
+        }
+        int maxAudioPlayerCt = Integer.valueOf(DisxConfigHandler.SERVER.getProperty("max_audio_players"));
+        int currentAudioPlayerCt = DisxServerAudioRegistry.getRegistryCount();
+        if (currentAudioPlayerCt >= maxAudioPlayerCt){
+            throw new DisxConcurrentAudioNodeCeilingException("Max audio player count reached!");
         }
     }
 

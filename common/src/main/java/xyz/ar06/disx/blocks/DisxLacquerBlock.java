@@ -1,6 +1,8 @@
 package xyz.ar06.disx.blocks;
 
+import dev.architectury.registry.CreativeTabRegistry;
 import dev.architectury.registry.fuel.FuelRegistry;
+import xyz.ar06.disx.DisxCreativeModeTabAssembly;
 import xyz.ar06.disx.entities.DisxRecordPressEntity;
 import dev.architectury.registry.registries.Registrar;
 import dev.architectury.registry.registries.RegistrySupplier;
@@ -104,13 +106,19 @@ public class DisxLacquerBlock extends HalfTransparentBlock{
         );
     }
 
-    public static void registerBlockItem(Registrar<Item> registrar, RegistrySupplier<CreativeModeTab> tab){
+    public static void registerBlockItem(Registrar<Item> registrar){
         itemRegistration = registrar.register(
                 new ResourceLocation("disx","lacquer_block"),
                 () -> new BlockItem(blockRegistration.get(), new Item.Properties()
-                        .arch$tab(tab)
                 )
         );
         //FuelRegistry.register(900, itemRegistration.get());
+    }
+
+    public static void registerTabItem(){
+        CreativeTabRegistry.appendBuiltinStack(
+                DisxCreativeModeTabAssembly.CREATIVE_MODE_TAB.get(),
+                new ItemStack(itemRegistration.get())
+        );
     }
 }

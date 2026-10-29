@@ -11,14 +11,13 @@ import java.util.concurrent.CompletableFuture;
 public class DisxPropertyTypeSuggestionProvider {
     public static CompletableFuture<Suggestions> getSuggestions(CommandContext<CommandSourceStack> commandSourceStackCommandContext, SuggestionsBuilder suggestionsBuilder) {
         suggestionsBuilder.suggest("player_use_whitelist_enabled");
-        suggestionsBuilder.suggest("video_existence_check");
         suggestionsBuilder.suggest("max_audio_players");
         suggestionsBuilder.suggest("debug_mode");
-        if (!Platform.isForge()){
-            suggestionsBuilder.suggest("use_live_ytsrc");
-        }
         suggestionsBuilder.suggest("audio_radius");
         suggestionsBuilder.suggest("sound_particles");
+        suggestionsBuilder.suggest("www2pcm_target");
+        suggestionsBuilder.suggest("direct_url_enabled");
+        suggestionsBuilder.suggest("cache_files_max_size");
         //suggestionsBuilder.suggest("refresh_token");
         //suggestionsBuilder.suggest("age_restricted_playback");
         return suggestionsBuilder.buildFuture();

@@ -1,0 +1,14 @@
+{
+  "required": true,
+  "package": "xyz.ar06.disx.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "minVersion": "0.8",
+  "client": [
+  ],
+  "mixins": [
+    "DisxEnderAdvancedJukeboxMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

@@ -33,23 +33,8 @@ repositories {
 
     maven {url 'https://mvnrepository.com/artifact/org.json/json'}
 
-    maven { url 'https://mvnrepository.com/artifact/com.github.sealedtx/java-youtube-downloader'}
-
-    maven{ url "https://maven.arbjerg.dev/releases" }
-
-    maven{url "https://maven.lavalink.dev/releases"}
-
     maven { url "https://maven.shedaniel.me" }
 
-    maven { url 'https://mvnrepository.com/artifact/com.grack/nanojson'}
-
-    maven { url 'https://mvnrepository.com/artifact/org.mozilla/rhino'}
-
-    maven { url 'https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-annotations'}
-
-    maven { url 'https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-core'}
-
-    maven { url 'https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-databind'}
 
 }
 
@@ -62,82 +47,11 @@ dependencies {
     common(project(path: ":common", configuration: "namedElements")) { transitive false }
     shadowCommon(project(path: ":common", configuration: "transformProductionForge")) { transitive = false }
 
-    //forgeRuntimeLibrary 'dev.arbjerg:lavaplayer:2.0.2'
-    /*forgeRuntimeLibrary group: 'org.json', name: 'json', version: '20230618'
-    forgeRuntimeLibrary group: 'com.github.sealedtx', name: 'java-youtube-downloader', version: '3.2.3'
-    forgeRuntimeLibrary 'org.junit.jupiter:junit-jupiter:5.8.1'
-    forgeRuntimeLibrary "dev.arbjerg:lavadsp:0.7.8"
-    forgeRuntimeLibrary group: 'org.jsoup', name: 'jsoup', version: '1.16.2' */
-
-
-    forgeRuntimeLibrary 'com.alibaba:fastjson:+'
-    forgeRuntimeLibrary 'com.fasterxml.jackson.core:jackson-annotations:2.17.2'
-    forgeRuntimeLibrary 'com.fasterxml.jackson.core:jackson-core:2.17.2'
-    forgeRuntimeLibrary 'com.fasterxml.jackson.core:jackson-databind:2.17.2'
-    forgeRuntimeLibrary 'com.github.walkyst.JAADec-fork:jaadec-ext-aac:0.1.3'
-    /*
-    include 'com.github.walkyst:lavaplayer-fork:1.4.3'
-    include 'com.github.walkyst.lavaplayer-fork:lava-common:1.4.3'
-    include 'com.github.walkyst.lavaplayer-fork:lavaplayer:1.4.3'
-    include 'com.github.walkyst.lavaplayer-fork:lavaplayer-ext-format-xm:1.4.3'
-    include 'com.github.walkyst.lavaplayer-fork:lavaplayer-ext-youtube-rotator:1.4.3'
-    include 'com.github.walkyst.lavaplayer-fork:lavaplayer-stream-merger:1.4.3'
-    include 'com.github.walkyst.lavaplayer-fork:lavaplayer-test-samples:1.4.3'
-    include 'com.github.walkyst:ibxm-fork:a75'
-    include 'com.github.walkyst:lavaplayer-natives-fork:1.0.2'
-    */
-    forgeRuntimeLibrary group: 'org.json', name: 'json', version: '+'
-    forgeRuntimeLibrary 'org.junit.jupiter:junit-jupiter:+'
-    forgeRuntimeLibrary 'org.junit.jupiter:junit-jupiter-api:+'
-    forgeRuntimeLibrary 'org.junit.jupiter:junit-jupiter-engine:+'
-    forgeRuntimeLibrary 'org.junit.jupiter:junit-jupiter-params:+'
-    forgeRuntimeLibrary 'org.junit.platform:junit-platform-commons:+'
-    forgeRuntimeLibrary 'org.junit.platform:junit-platform-engine:+'
-    forgeRuntimeLibrary 'org.mozilla:rhino:+'
-    forgeRuntimeLibrary 'org.mozilla:rhino-engine:+'
-    forgeRuntimeLibrary 'org.opentest4j:opentest4j:+'
-    //forgeRuntimeLibrary 'com.github.aikaterna:lavaplayer-natives:original-SNAPSHOT'
-    //forgeRuntimeLibrary 'dev.arbjerg:lavaplayer:+'
-    ///forgeRuntimeLibrary 'dev.arbjerg:lavaplayer-natives:+'
-    forgeRuntimeLibrary group: 'org.jsoup', name: 'jsoup', version: '+'
-    forgeRuntimeLibrary 'org.apache.httpcomponents:httpclient:+'
-    forgeRuntimeLibrary 'commons-logging:commons-logging:+'
-    forgeRuntimeLibrary 'org.apache.httpcomponents:httpcore:+'
-    forgeRuntimeLibrary group: 'com.grack', name: 'nanojson', version: '+'
-
-    include 'com.alibaba:fastjson:+'
-    //include 'com.fasterxml.jackson.core:jackson-annotations:+'
-    //include 'com.fasterxml.jackson.core:jackson-core:+'
-    //include 'com.fasterxml.jackson.core:jackson-databind:+'
-    //include 'com.github.walkyst.JAADec-fork:jaadec-ext-aac:+'
-    //include 'com.github.sealedtx:java-youtube-downloader:+'
-    include group: 'org.json', name: 'json', version: '+'
-    include 'org.junit.jupiter:junit-jupiter:+'
-    include 'org.junit.jupiter:junit-jupiter-api:+'
-    include 'org.junit.jupiter:junit-jupiter-engine:+'
-    include 'org.junit.jupiter:junit-jupiter-params:+'
-    include 'org.junit.platform:junit-platform-commons:+'
-    include 'org.junit.platform:junit-platform-engine:+'
-    //include 'org.mozilla:rhino:+'
-    //include 'org.mozilla:rhino-engine:+'
-    include 'org.opentest4j:opentest4j:+'
-    include group: 'org.jsoup', name: 'jsoup', version: '+'
-
-    shadowDependencies 'org.apache.httpcomponents:httpcore:+'
-    shadowDependencies 'commons-logging:commons-logging:+'
-    shadowDependencies 'org.apache.httpcomponents:httpclient:+'
-    shadowDependencies 'commons-io:commons-io:2.11.0'
-    shadowDependencies group: 'com.grack', name: 'nanojson', version: '+'
-    //shadowDependencies 'dev.arbjerg:lavaplayer:+'
-    //shadowDependencies 'dev.arbjerg:lavaplayer-natives:+'
-    //shadowDependencies 'dev.arbjerg:lava-common:+'
-    shadowDependencies 'org.mozilla:rhino:+'
-    shadowDependencies 'org.mozilla:rhino-engine:+'
-    shadowDependencies 'com.fasterxml.jackson.core:jackson-annotations:2.18.3'
-    shadowDependencies 'com.fasterxml.jackson.core:jackson-core:2.18.3'
-    shadowDependencies 'com.fasterxml.jackson.core:jackson-databind:2.18.3'
-
     modCompileOnly "me.shedaniel:RoughlyEnoughItems-api-forge:${rootProject.forge_REI_version}"
+
+    implementation group: 'org.json', name: 'json', version: '+'
+    forgeRuntimeLibrary(group: 'org.json', name: 'json', version: '+')
+    shadowDependencies(group: 'org.json', name: 'json', version: '+')
 }
 
 processResources {
@@ -152,15 +66,14 @@ shadowJar {
     exclude "fabric.mod.json"
     exclude "architectury.common.json"
 
-    relocate 'org.apache', 'disxshadowed.org.apache'
-    relocate 'org.mozilla', 'disxshadowed.rhino'
-    relocate 'com.fasterxml', 'disxshadowed.com.fasterxml'
-    relocate 'com.grack', 'disxshadowed.com.grack'
-    relocate 'org.mozilla.javascript', 'disxshadowed.rhino'
 
     configurations = [project.configurations.shadowCommon, project.configurations.shadowDependencies]
 
     archiveClassifier = "dev-shadow"
+
+
+
+    relocate 'org.json', 'disxshadowed.org.json'
 
 }
 

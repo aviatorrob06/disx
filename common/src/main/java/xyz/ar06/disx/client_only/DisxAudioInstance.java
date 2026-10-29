@@ -12,6 +12,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
+import xyz.ar06.disx.DisxAudioFormatConstants;
 import xyz.ar06.disx.DisxAudioMotionType;
 import xyz.ar06.disx.DisxLogger;
 
@@ -20,17 +21,24 @@ import java.util.ConcurrentModificationException;
 import java.util.LinkedList;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class DisxAudioInstance {
-    private static final AudioFormat audioFormat = new AudioFormat(
-            AudioFormat.Encoding.PCM_SIGNED,     // PCM signed encoding
-            44100,                              // Sample rate (44.1kHz is common)
-            16,                                 // Sample size in bits (16-bit audio)
-            2,                                  // Number of channels (stereo in this case)
-            4,                                  // Frame size (2 bytes per channel = 4 bytes per frame)
-            44100,                              // Frame rate (same as sample rate for PCM)
-            true                                // Big-endian byte order
-    );
+    private static final AtomicInteger threadCounter = new AtomicInteger(1);
+    private static final ExecutorService audioWriteExecutor =
+            Executors.newCachedThreadPool(runnable -> {
+                Thread thread = new Thread(
+                        runnable,
+                        "Disx Audio-Playback Thread-" + threadCounter.getAndIncrement()
+                );
+
+                thread.setDaemon(true);
+                return thread;
+            });
+
 
     private BlockPos blockPos;
     private ResourceLocation dimension;
@@ -44,7 +52,8 @@ public class DisxAudioInstance {
     private int preferredVolume;
     private DisxAudioMotionType motionType;
     private UUID entityUuid;
-    public DisxAudioInstance(BlockPos blockPos, ResourceLocation dimension, UUID instanceOwner, boolean loop, int preferredVolume, DisxAudioMotionType motionType, UUID entityUuid){
+    private int rogueRadius;
+    public DisxAudioInstance(BlockPos blockPos, ResourceLocation dimension, UUID instanceOwner, boolean loop, int preferredVolume, DisxAudioMotionType motionType, UUID entityUuid, int rogueRadius){
         DisxLogger.debug("New DisxAudioInstance called for; setting details:");
         this.blockPos = blockPos;
         this.dimension = dimension;
@@ -53,6 +62,7 @@ public class DisxAudioInstance {
         this.preferredVolume = preferredVolume;
         this.motionType = motionType;
         this.entityUuid = entityUuid;
+        this.rogueRadius = rogueRadius;
         DisxLogger.debug("Details set successfully");
         DisxLogger.debug("Building audio line and controls");
         this.buildAudioLine();
@@ -60,8 +70,7 @@ public class DisxAudioInstance {
         try {
             ClientTickEvent.CLIENT_LEVEL_POST.register(this::loops);
         } catch (ConcurrentModificationException e){
-            DisxLogger.error("Error registering writing and volume loops:");
-            e.printStackTrace();
+            DisxLogger.error(e);
         }
         DisxLogger.debug("DisxAudioInstance initialized successfully!");
     }
@@ -77,8 +86,7 @@ public class DisxAudioInstance {
             //ClientTickEvent.CLIENT_POST.unregister(this::loops);
             ClientTickEvent.CLIENT_LEVEL_POST.unregister(this::loops);
         } catch (ConcurrentModificationException e){
-            DisxLogger.error("Error deregistering writing and volume loops:");
-            e.printStackTrace();
+            DisxLogger.error(e);
         }
         destroyLine();
         this.blockPos = null;
@@ -111,16 +119,16 @@ public class DisxAudioInstance {
                 Mixer.Info[] mixers = AudioSystem.getMixerInfo();
                 for (Mixer.Info mixerInfo : mixers) {
                     if (mixerInfo.getName().equals(preferredDeviceName)) {
-                        DataLine.Info info = new DataLine.Info(SourceDataLine.class, audioFormat);
+                        DataLine.Info info = new DataLine.Info(SourceDataLine.class, DisxAudioFormatConstants.format);
                         Mixer mixer = AudioSystem.getMixer(mixerInfo);
                         resultLine = (SourceDataLine) mixer.getLine(info);
-                        resultLine.open(audioFormat);
+                        resultLine.open(DisxAudioFormatConstants.format);
                     }
                 }
             } else {
                 DisxLogger.debug("Preferred audio device is not selected; using system default");
-                resultLine = AudioSystem.getSourceDataLine(audioFormat);
-                resultLine.open(audioFormat);
+                resultLine = AudioSystem.getSourceDataLine(DisxAudioFormatConstants.format);
+                resultLine.open(DisxAudioFormatConstants.format);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -144,11 +152,13 @@ public class DisxAudioInstance {
     }
 
     private boolean writingToLine = false;
-    private LinkedList<byte[]> audioDataPacketQueue = new LinkedList<>();
+    private LinkedBlockingQueue<byte[]> audioDataPacketQueue = new LinkedBlockingQueue<>();
 
     public void addToPacketDataQueue(byte[] data){
+        DisxLogger.debug("Something added to audio data queue");
         this.audioDataPacketQueue.add(data);
     }
+
     private void writingLoop(ClientLevel clientLevel){
         CompletableFuture.runAsync(() -> {
             if (!writingToLine && !audioDataPacketQueue.isEmpty() && this.audioLine != null){
@@ -165,7 +175,7 @@ public class DisxAudioInstance {
                 if (!this.audioLine.isOpen()){
                     try {
                         DisxLogger.debug("Audio Line not opened, opening...");
-                        this.audioLine.open(audioFormat);
+                        this.audioLine.open(DisxAudioFormatConstants.format);
                     } catch (LineUnavailableException e) {
                         e.printStackTrace();
                     }
@@ -181,7 +191,7 @@ public class DisxAudioInstance {
                 DisxLogger.debug("Enqueued audio data written to line");
                 writingToLine = false;
             }
-        });
+        }, audioWriteExecutor);
     }
 
     private void destroyLine(){
@@ -238,7 +248,7 @@ public class DisxAudioInstance {
                                 if (volumeCalc_line > 6.0206) {
                                     volumeCalc_line = 6.0206f;
                                 }
-                                volumeControl.setValue(volumeCalc_line);
+                                if (volumeControl != null) volumeControl.setValue(volumeCalc_line);
 
                                 if (volumeCalc_line <= -80f) {
                                     playerCanHear = false;
@@ -252,16 +262,16 @@ public class DisxAudioInstance {
                                         Minecraft.getInstance().getMusicManager().tick();
                                         musicManager.stopPlaying();
                                     } catch (NullPointerException e) {
-                                        DisxLogger.error("Audio Instance at " + blockPos + " was unsuccessful in pausing client music. Error: " + e);
+                                        DisxLogger.error("Audio Instance at " + blockPos + " was unsuccessful in pausing client music, got NullPointerException:" + e);
                                     }
                                 }
                             } else {
-                                volumeControl.setValue(-80f);
+                                if (volumeControl != null) volumeControl.setValue(-80f);
                                 playerCanHear = false;
                             }
                         }
                     } else {
-                        volumeControl.setValue(-80f);
+                        if (volumeControl != null) volumeControl.setValue(-80f);
                         playerCanHear = false;
                     }
 
@@ -307,4 +317,10 @@ public class DisxAudioInstance {
     public UUID getEntityUuid() {
         return entityUuid;
     }
+
+    public void setRogueRadius(int rogueRadius) {
+        this.rogueRadius = rogueRadius;
+    }
+
+    public int getRogueRadius() {return rogueRadius;}
 }

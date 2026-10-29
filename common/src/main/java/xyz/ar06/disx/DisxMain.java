@@ -1,18 +1,17 @@
 package xyz.ar06.disx;
 
 import dev.architectury.event.events.common.*;
-import dev.architectury.registry.fuel.FuelRegistry;
 import dev.architectury.utils.Env;
-import net.minecraft.client.Minecraft;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.item.BlockItem;
-import net.minecraft.world.level.block.SoundType;
-import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.item.enchantment.Enchantment;
 import xyz.ar06.disx.blocks.*;
 import xyz.ar06.disx.client_only.DisxClientMain;
 import xyz.ar06.disx.commands.*;
 import xyz.ar06.disx.config.DisxConfigHandler;
+import xyz.ar06.disx.enchantments.DisxResonanceEnchantment;
+import xyz.ar06.disx.enchantments.DisxRetrogradeCurseEnchantment;
+import xyz.ar06.disx.enchantments.DisxTempoEnchantment;
 import xyz.ar06.disx.entities.DisxAdvancedJukeboxEntity;
 import xyz.ar06.disx.entities.vehicle.DisxAdvancedJukeboxMinecart;
 import xyz.ar06.disx.items.*;
@@ -36,7 +35,6 @@ import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 
-import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 
 public class DisxMain {
@@ -54,29 +52,36 @@ public class DisxMain {
         Registrar<RecipeType<?>> recipeTypeRegistrar = REGISTRAR_MANAGER.get().get(Registries.RECIPE_TYPE);
         Registrar<SoundEvent> soundEventRegistrar = REGISTRAR_MANAGER.get().get(Registries.SOUND_EVENT);
         Registrar<EntityType<?>> entityTypeRegistrar = REGISTRAR_MANAGER.get().get(Registries.ENTITY_TYPE);
+        Registrar<Enchantment> enchantmentRegistrar = REGISTRAR_MANAGER.get().get(Registries.ENCHANTMENT);
         //Creative Mode Tab Registration
-        RegistrySupplier<CreativeModeTab> creativeModeTab = tabRegistrar.register(new ResourceLocation("disx", "creativemodetab.disx"), () -> CreativeTabRegistry.create(Component.translatable("category.disx.tab"), () -> new ItemStack(itemsRegistrar.get(new ResourceLocation("disx", "blank_disc")))));
+        DisxCreativeModeTabAssembly.CREATIVE_MODE_TAB = tabRegistrar.register(
+                new ResourceLocation("disx", "creativemodetab.disx"),
+                () -> CreativeTabRegistry.create(
+                        Component.translatable("category.disx.tab"),
+                        () -> new ItemStack(itemsRegistrar.get(new ResourceLocation("disx", "blank_disc")))
+                )
+        );
         //Item Registration Calls
-        DisxVinylShard.registerItem(itemsRegistrar, creativeModeTab);
-        DisxBlankDisc.registerItem(itemsRegistrar, creativeModeTab);
+        DisxVinylShard.registerItem(itemsRegistrar);
+        DisxBlankDisc.registerItem(itemsRegistrar);
         DisxCustomDisc.registerCustomDiscs(itemsRegistrar);
-        DisxLacquerDrop.registerItem(itemsRegistrar, creativeModeTab);
+        DisxLacquerDrop.registerItem(itemsRegistrar);
         DisxRecordStamp.registerItem(itemsRegistrar);
-        DisxAdvancedJukeboxMinecartItem.registerItem(itemsRegistrar, creativeModeTab);
+        DisxAdvancedJukeboxMinecartItem.registerItem(itemsRegistrar);
         //Block Registration Calls
         DisxAdvancedJukebox.registerBlock(blocksRegistrar);
-        DisxAdvancedJukebox.registerBlockItem(itemsRegistrar, creativeModeTab);
+        DisxAdvancedJukebox.registerBlockItem(itemsRegistrar);
         DisxAdvancedJukeboxEntity.registerEntity(blockEntityRegistrar);
         DisxStampMaker.registerBlock(blocksRegistrar);
-        DisxStampMaker.registerBlockItem(itemsRegistrar, creativeModeTab);
+        DisxStampMaker.registerBlockItem(itemsRegistrar);
         DisxStampMaker.registerBlockEntity(blockEntityRegistrar);
         DisxRecordPress.registerBlock(blocksRegistrar);
-        DisxRecordPress.registerBlockItem(itemsRegistrar, creativeModeTab);
+        DisxRecordPress.registerBlockItem(itemsRegistrar);
         DisxRecordPress.registerBlockEntity(blockEntityRegistrar);
         DisxLacquerBlock.registerBlock(blocksRegistrar);
-        DisxLacquerBlock.registerBlockItem(itemsRegistrar, creativeModeTab);
+        DisxLacquerBlock.registerBlockItem(itemsRegistrar);
         DisxEnderAdvancedJukebox.registerBlock(blocksRegistrar);
-        DisxEnderAdvancedJukebox.registerBlockItem(itemsRegistrar, creativeModeTab);
+        DisxEnderAdvancedJukebox.registerBlockItem(itemsRegistrar);
         //Command Registration Calls
         DisxConfigCommand.registerCommand();
         DisxForceStopCommand.registerCommand();
@@ -97,10 +102,14 @@ public class DisxMain {
         DisxSoundEvents.registerAdvancedJukeboxStatic(soundEventRegistrar);
         //Entity Registration Calls
         DisxAdvancedJukeboxMinecart.registerEntityType(entityTypeRegistrar);
+        //Enchantment Registration Calls
+        DisxRetrogradeCurseEnchantment.registerEnchantment(enchantmentRegistrar);
+        DisxTempoEnchantment.registerEnchantment(enchantmentRegistrar);
+        DisxResonanceEnchantment.registerEnchantment(enchantmentRegistrar);
+
 
         //Pull Mod Info
         DisxModInfo.pullLatestVersion();
-        DisxModInfo.pullForceSettings();
 
         //Fuel Registrations done in individual client loaders
 
@@ -129,17 +138,7 @@ public class DisxMain {
 
         LifecycleEvent.SERVER_STARTED.register(DisxSystemMessages::devBuildNotice);
 
-        LifecycleEvent.SERVER_STARTED.register(DisxAudioStreamingNode::initPlayerManager);
-
-        LifecycleEvent.SERVER_STARTED.register(DisxSystemMessages::forcingDisxYtSrcApi);
-
-        LifecycleEvent.SERVER_STARTED.register(DisxSystemMessages::forcingLiveYtSrc);
-
-        LifecycleEvent.SERVER_STARTED.register((server) -> {
-            if (DisxModInfo.isTESTTRACK()){
-                CompletableFuture.runAsync(() -> DisxLavaplayerTest.testTrack(server));
-            }
-        });
+        LifecycleEvent.SERVER_STARTING.register(DisxTmpHandler::onServerStart);
 
         InteractionEvent.RIGHT_CLICK_BLOCK.register(DisxAdvancedJukebox::leverListener);
 
@@ -152,5 +151,6 @@ public class DisxMain {
         }
 
         DisxLogger.info("Success in Mod Launch (SERVER)");
+
     }
 }

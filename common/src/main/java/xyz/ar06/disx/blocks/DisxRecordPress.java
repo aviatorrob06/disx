@@ -1,5 +1,7 @@
 package xyz.ar06.disx.blocks;
 
+import dev.architectury.registry.CreativeTabRegistry;
+import xyz.ar06.disx.DisxCreativeModeTabAssembly;
 import xyz.ar06.disx.DisxLogger;
 import xyz.ar06.disx.DisxMain;
 import xyz.ar06.disx.entities.DisxRecordPressEntity;
@@ -232,10 +234,17 @@ public class DisxRecordPress extends BaseEntityBlock {
         );
     }
 
-    public static void registerBlockItem(Registrar<Item> registrar, RegistrySupplier<CreativeModeTab> tab){
+    public static void registerBlockItem(Registrar<Item> registrar){
         blockItemRegistration = registrar.register(
                 new ResourceLocation("disx", "record_press"),
-                () -> new BlockItem(blockRegistration.get(), new Item.Properties().arch$tab(tab))
+                () -> new BlockItem(blockRegistration.get(), new Item.Properties())
+        );
+    }
+
+    public static void registerTabItem(){
+        CreativeTabRegistry.appendBuiltinStack(
+                DisxCreativeModeTabAssembly.CREATIVE_MODE_TAB.get(),
+                new ItemStack(blockItemRegistration.get())
         );
     }
 
