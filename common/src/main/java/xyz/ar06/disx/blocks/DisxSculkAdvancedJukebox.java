@@ -89,6 +89,7 @@ public class DisxSculkAdvancedJukebox extends BaseEntityBlock {
                                 inventoryManager.setDiscInventory(jukeboxEntity.getItem(0).copy(), handStack.copyWithCount(1));
                                 handStack.shrink(1);
                                 level.playSound(null, blockPos, SoundEvents.SCULK_CATALYST_PLACE, SoundSource.BLOCKS, 1F, 1F);
+                                vibrationParticle(level, blockPos);
                                 return InteractionResult.SUCCESS;
                             }
                         }
