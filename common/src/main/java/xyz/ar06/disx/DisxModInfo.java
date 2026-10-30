@@ -14,8 +14,8 @@ import java.util.HashMap;
 public class DisxModInfo {
     //MANUAL MANIPULATIVES
     private static final String VERSION = "0.4.0";
-    private static final boolean DEV_BUILD = false;
-    private static final boolean FORCE_DEBUG = false;
+    private static final boolean DEV_BUILD = true;
+    private static final boolean FORCE_DEBUG = true;
     private static final String[] debugKeys = new String[]{
             "skibidi gooning",
             "uninstall brainrot.exe"
@@ -29,7 +29,6 @@ public class DisxModInfo {
     private static final String ROADMAP_URL = "https://trello.com/b/JwbWrPbE";
     private static final String PATREON_URL = "https://www.patreon.com/c/ar06";
     private static final String LATEST_VERSION_URL = "https://raw.githubusercontent.com/AviatorRob/disx/master/LATEST_VERSION.json";
-    private static final String FORCE_SETTINGS_URL = "https://raw.githubusercontent.com/AviatorRob/disx/refs/heads/master/FORCE_SETTINGS.json";
     private static final String DEFAULT_WWW2PCM_URL = "https://www2pcm.ar06.xyz/";
 
     //MOD CONFLICT INFO

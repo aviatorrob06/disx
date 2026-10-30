@@ -16,8 +16,10 @@ import xyz.ar06.disx.DisxLogger;
 import xyz.ar06.disx.DisxSystemMessages;
 import xyz.ar06.disx.blocks.DisxAdvancedJukebox;
 import xyz.ar06.disx.blocks.DisxEnderAdvancedJukebox;
+import xyz.ar06.disx.blocks.DisxSculkAdvancedJukebox;
 import xyz.ar06.disx.blocks.DisxStampMaker;
 import xyz.ar06.disx.entities.vehicle.DisxAdvancedJukeboxMinecart;
+import xyz.ar06.disx.items.DisxCustomDisc;
 
 import java.util.UUID;
 
@@ -120,9 +122,17 @@ public class DisxBehaviorHandling {
                         blockState.use(player.level(), player, hand, blockHitResult);
                         return CompoundEventResult.interruptTrue(player.getItemInHand(hand));
                     }
+                    if (blockState.getBlock().equals(DisxSculkAdvancedJukebox.blockRegistration.get())){
+                        if (!(player.getItemInHand(hand).getItem() instanceof DisxCustomDisc)){
+                            blockState.use(player.level(), player, hand, blockHitResult);
+                            return CompoundEventResult.interruptTrue(player.getItemInHand(hand));
+                        }
+                    }
                 }
             }
         }
         return CompoundEventResult.pass();
     }
+
+
 }

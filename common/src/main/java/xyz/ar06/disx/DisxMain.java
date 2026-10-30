@@ -13,6 +13,7 @@ import xyz.ar06.disx.enchantments.DisxResonanceEnchantment;
 import xyz.ar06.disx.enchantments.DisxRetrogradeCurseEnchantment;
 import xyz.ar06.disx.enchantments.DisxTempoEnchantment;
 import xyz.ar06.disx.entities.DisxAdvancedJukeboxEntity;
+import xyz.ar06.disx.entities.DisxSculkAdvancedJukeboxEntity;
 import xyz.ar06.disx.entities.vehicle.DisxAdvancedJukeboxMinecart;
 import xyz.ar06.disx.items.*;
 import xyz.ar06.disx.recipe_types.DisxCustomDiscRecipe;
@@ -82,6 +83,9 @@ public class DisxMain {
         DisxLacquerBlock.registerBlockItem(itemsRegistrar);
         DisxEnderAdvancedJukebox.registerBlock(blocksRegistrar);
         DisxEnderAdvancedJukebox.registerBlockItem(itemsRegistrar);
+        DisxSculkAdvancedJukebox.registerBlock(blocksRegistrar);
+        DisxSculkAdvancedJukebox.registerBlockItem(itemsRegistrar);
+        DisxSculkAdvancedJukeboxEntity.registerEntity(blockEntityRegistrar);
         //Command Registration Calls
         DisxConfigCommand.registerCommand();
         DisxForceStopCommand.registerCommand();
