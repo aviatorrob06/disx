@@ -92,7 +92,7 @@ public class DisxEnderAdvancedJukebox extends Block{
                                 DisxLogger.debug("Checking for any active audio filters");
                                 ArrayList<DisxAudioFilterType> audioFilters = DisxDiscEnchantmentHelper.buildAudioFilterArray(handStack);
                                 DisxLogger.debug("Calling add to registry (LIVE)");
-                                DisxServerAudioRegistry.addToRegistry(blockPos, mediaUrl, player, level.getServer(), level.dimension(), false, DisxAudioMotionType.LIVE, player.getUUID(), -1, audioFilters);
+                                DisxServerAudioRegistry.addToRegistry(blockPos, mediaUrl, player, level.getServer(), level.dimension(), false, DisxAudioMotionType.LIVE, player.getUUID(), -1, audioFilters, ItemStack.EMPTY);
                                 helper.disx$setEnderAdvancedJukeboxInventory(ContainerHelper.saveAllItems(new CompoundTag(), invList));
                                 handStack.shrink(1);
                                 level.playSound(null, blockPos, SoundEvents.ENDER_EYE_LAUNCH, SoundSource.BLOCKS, 1.0F, 1.0F);

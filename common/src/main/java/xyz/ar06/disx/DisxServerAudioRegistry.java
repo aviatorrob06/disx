@@ -5,9 +5,11 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import xyz.ar06.disx.audio_filters.DisxAudioFilterType;
 import xyz.ar06.disx.config.DisxConfigHandler;
+import xyz.ar06.disx.entities.DisxSculkAdvancedJukeboxEntity;
 import xyz.ar06.disx.exceptions.*;
 import xyz.ar06.disx.utils.DisxInternetCheck;
 
@@ -17,14 +19,56 @@ public class DisxServerAudioRegistry {
 
     public static LinkedList<Player> players = new LinkedList<>();
     public static LinkedList<DisxAudioStreamingNode> registry = new LinkedList<>();
+    public static HashMap<ItemStack, ArrayList<DisxSculkAdvancedJukeboxEntity>> entitiesOnFrequency = new HashMap<>();
+
+    public static void addEntityToFrequency(ItemStack frequencyStack, DisxSculkAdvancedJukeboxEntity entity){
+        ItemStack keyFrequencyStack = findFrequencyKey(frequencyStack);
+        if (keyFrequencyStack == null){
+            ArrayList<DisxSculkAdvancedJukeboxEntity> toAdd = new ArrayList<>();
+            toAdd.add(entity);
+            entitiesOnFrequency.put(frequencyStack, toAdd);
+        }
+    }
+
+    public static void removeEntityFromFrequency(ItemStack frequencyStack, DisxSculkAdvancedJukeboxEntity entity){
+        ItemStack keyFrequencyStack = findFrequencyKey(frequencyStack);
+        if (keyFrequencyStack != null){
+            entitiesOnFrequency.get(keyFrequencyStack).remove(entity);
+        }
+    }
+
+    public static void removeEntityFromFrequency(DisxSculkAdvancedJukeboxEntity entity){
+        for (ArrayList<DisxSculkAdvancedJukeboxEntity> arrayList : entitiesOnFrequency.values()){
+            arrayList.remove(entity);
+        }
+    }
+
+    public static ArrayList<DisxSculkAdvancedJukeboxEntity> getEntitiesOnFrequency(ItemStack frequencyStack){
+        ItemStack keyFrequencyStack = findFrequencyKey(frequencyStack);
+        if (keyFrequencyStack != null){
+            return entitiesOnFrequency.get(keyFrequencyStack);
+        } else {
+            return new ArrayList<>();
+        }
+    }
+
+    private static ItemStack findFrequencyKey(ItemStack frequencyStack) {
+        for (ItemStack key : entitiesOnFrequency.keySet()) {
+            if (ItemStack.isSameItemSameTags(key, frequencyStack)) {
+                return key;
+            }
+        }
+
+        return null;
+    }
 
     //Default variant
-    public static void addToRegistry(BlockPos pos, String mediaUrl, Player player, MinecraftServer minecraftServer, ResourceKey<Level> dimension, boolean loop, DisxAudioMotionType motionType, UUID entityUuid, int rogueRadius, ArrayList<DisxAudioFilterType> audioFilters){
+    public static void addToRegistry(BlockPos pos, String mediaUrl, Player player, MinecraftServer minecraftServer, ResourceKey<Level> dimension, boolean loop, DisxAudioMotionType motionType, UUID entityUuid, int rogueRadius, ArrayList<DisxAudioFilterType> audioFilters, ItemStack frequencyStack){
         ResourceLocation dimensionLocation = dimension.location();
         if (player != null){
             DisxSystemMessages.playingAtLocation(minecraftServer, player.getName().getString(), pos, mediaUrl, dimensionLocation);
         }
-        registry.add(new DisxAudioStreamingNode(mediaUrl, pos, minecraftServer, dimensionLocation, player, loop, 0, motionType, entityUuid, rogueRadius, audioFilters));
+        registry.add(new DisxAudioStreamingNode(mediaUrl, pos, minecraftServer, dimensionLocation, player, loop, motionType, entityUuid, rogueRadius, audioFilters, frequencyStack));
         if (player == null){
             players.forEach(plr -> {
                 DisxServerPacketIndex.ServerPackets.AudioRegistrySyncPackets.add(plr, pos, dimensionLocation, new UUID(0L, 0L), loop, 100, motionType, entityUuid, rogueRadius);
@@ -37,15 +81,15 @@ public class DisxServerAudioRegistry {
 
     }
 
-    //Variant for Sound Command - Takes server, dimension as resourcelocation, and start time
-    public static void addToRegistry(BlockPos pos, String mediaUrl, Player player, MinecraftServer server, ResourceLocation dimension, int startTime, boolean loop, int volume, int rogueRadius, ArrayList<DisxAudioFilterType> audioFilters){
+    //Variant for Sound Command - Takes server, dimension as resourcelocation
+    public static void addToRegistry(BlockPos pos, String mediaUrl, Player player, MinecraftServer server, ResourceLocation dimension, boolean loop, int volume, int rogueRadius, ArrayList<DisxAudioFilterType> audioFilters){
         ResourceLocation dimensionLocation = dimension;
         if (player != null){
             DisxSystemMessages.playingAtLocation(server, player.getName().getString(), pos, mediaUrl, dimensionLocation);
-            registry.add(new DisxAudioStreamingNode(mediaUrl, pos, server, dimensionLocation, player, loop, startTime, DisxAudioMotionType.STATIC, new UUID(0L, 0L), rogueRadius, audioFilters));
+            registry.add(new DisxAudioStreamingNode(mediaUrl, pos, server, dimensionLocation, player, loop, DisxAudioMotionType.STATIC, new UUID(0L, 0L), rogueRadius, audioFilters, ItemStack.EMPTY));
         } else {
             DisxSystemMessages.playingAtLocation(server, "Server", pos, mediaUrl, dimensionLocation);
-            registry.add(new DisxAudioStreamingNode(mediaUrl, pos, server, dimensionLocation, null, loop, startTime, DisxAudioMotionType.STATIC, new UUID(0L, 0L), rogueRadius, audioFilters));
+            registry.add(new DisxAudioStreamingNode(mediaUrl, pos, server, dimensionLocation, null, loop, DisxAudioMotionType.STATIC, new UUID(0L, 0L), rogueRadius, audioFilters, ItemStack.EMPTY));
         }
 
         if (player == null){

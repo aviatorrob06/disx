@@ -33,6 +33,7 @@ import xyz.ar06.disx.audio_filters.DisxAudioFilterType;
 import xyz.ar06.disx.blocks.DisxAdvancedJukebox;
 import xyz.ar06.disx.client_only.DisxAudioInstanceRegistry;
 import xyz.ar06.disx.client_only.DisxConfigRecordS2C;
+import xyz.ar06.disx.enchantments.DisxDiscEnchantmentHelper;
 import xyz.ar06.disx.exceptions.DisxException;
 import xyz.ar06.disx.items.DisxAdvancedJukeboxMinecartItem;
 import xyz.ar06.disx.items.DisxCustomDisc;
@@ -242,10 +243,12 @@ public class DisxAdvancedJukeboxMinecart extends Minecart implements ContainerEn
                 tag.remove("videoId");
                 itemStack.setTag(tag);
             }
+            ArrayList<DisxAudioFilterType> audioFilters = DisxDiscEnchantmentHelper.buildAudioFilterArray(itemStack);
+
             String mediaUrl = tag.getString("mediaUrl");
             if (!mediaUrl.isEmpty()){
                 DisxLogger.debug("Calling add to registry (LIVE)");
-                DisxServerAudioRegistry.addToRegistry(this.getOnPos(), mediaUrl, null, this.level().getServer(),this.level().dimension(), false, DisxAudioMotionType.LIVE, this.getUUID(), -1, new ArrayList<DisxAudioFilterType>());
+                DisxServerAudioRegistry.addToRegistry(this.getOnPos(), mediaUrl, null, this.level().getServer(),this.level().dimension(), false, DisxAudioMotionType.LIVE, this.getUUID(), -1, audioFilters, ItemStack.EMPTY);
             }
         }
 
@@ -269,10 +272,12 @@ public class DisxAdvancedJukeboxMinecart extends Minecart implements ContainerEn
             if (!tag.contains("mediaUrl")){
                 return;
             }
+            ArrayList<DisxAudioFilterType> audioFilters = DisxDiscEnchantmentHelper.buildAudioFilterArray(itemStack);
+
             String mediaUrl = tag.getString("mediaUrl");
             if (!mediaUrl.isEmpty()){
                 DisxLogger.debug("Calling add to registry (LIVE)");
-                DisxServerAudioRegistry.addToRegistry(this.getOnPos(), mediaUrl, player, this.level().getServer(),this.level().dimension(), false, DisxAudioMotionType.LIVE, this.getUUID(), -1, new ArrayList<DisxAudioFilterType>());
+                DisxServerAudioRegistry.addToRegistry(this.getOnPos(), mediaUrl, player, this.level().getServer(),this.level().dimension(), false, DisxAudioMotionType.LIVE, this.getUUID(), -1, audioFilters, ItemStack.EMPTY);
             }
         }
         this.setChanged();

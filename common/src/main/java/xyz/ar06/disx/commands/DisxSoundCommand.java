@@ -34,11 +34,10 @@ public class DisxSoundCommand {
                     .requires(commandSourceStack -> commandSourceStack.hasPermission(2))
                             .then(Commands.argument("dimension", DimensionArgument.dimension())
                                     .then(Commands.argument("position", BlockPosArgument.blockPos())
-                                            .then(Commands.argument("startTime", IntegerArgumentType.integer())
                                                     .then(Commands.argument("volume", IntegerArgumentType.integer(0, 200))
                                                             .then(Commands.argument("loop", BoolArgumentType.bool())
                                                                     .then(Commands.argument("audioUrl", StringArgumentType.greedyString())
-                                                                    .executes(DisxSoundCommand::run))))))));
+                                                                    .executes(DisxSoundCommand::run)))))));
         }));
     }
 
@@ -76,12 +75,10 @@ public class DisxSoundCommand {
             String videoId = context.getArgument("audioUrl", String.class);
             ResourceLocation dimension = context.getArgument("dimension", ResourceLocation.class);
             BlockPos blockPos = BlockPosArgument.getBlockPos(context, "position");
-            Integer startTime = context.getArgument("startTime", Integer.class);
             Integer volumePercentage = context.getArgument("volume", Integer.class);
             Boolean loop = context.getArgument("loop", Boolean.class);
             int rogueRadius = -1;
             ArrayList<DisxAudioFilterType> audioFilters = new ArrayList<DisxAudioFilterType>();
-            DisxLogger.debug("START TIME PROVIDED: " + startTime);
             boolean hasInternet = DisxInternetCheck.checkInternet();
             if (!hasInternet){
                 throw new DisxNoInternetException("No Internet Detected!");
@@ -95,9 +92,9 @@ public class DisxSoundCommand {
                 throw new DisxTooLongException("Duration too long!");
             }
             if (!context.getSource().isPlayer()){
-                DisxServerAudioRegistry.addToRegistry(blockPos, videoId, null, context.getSource().getServer(), dimension, startTime.intValue(), loop, volumePercentage, rogueRadius, audioFilters);
+                DisxServerAudioRegistry.addToRegistry(blockPos, videoId, null, context.getSource().getServer(), dimension, loop, volumePercentage, rogueRadius, audioFilters);
             } else {
-                DisxServerAudioRegistry.addToRegistry(blockPos, videoId, context.getSource().getPlayer(), context.getSource().getServer(), dimension, startTime.intValue(), loop, volumePercentage, rogueRadius, audioFilters);
+                DisxServerAudioRegistry.addToRegistry(blockPos, videoId, context.getSource().getPlayer(), context.getSource().getServer(), dimension, loop, volumePercentage, rogueRadius, audioFilters);
             }
             context.getSource().sendSystemMessage(Component.translatable("sysmsg.disx.soundcmd.attempting_playback", videoId, blockPos.toString(), dimension.toString()));
         } catch (DisxException e){

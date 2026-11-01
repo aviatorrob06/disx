@@ -10,6 +10,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 import xyz.ar06.disx.audio_filters.*;
 import xyz.ar06.disx.exceptions.DisxAudioStreamingNodeException;
@@ -71,8 +72,10 @@ public class DisxAudioStreamingNode {
 
     private ArrayList<DisxAudioFilterType> activeFilters;
 
+    private ItemStack frequencyStack;
 
-    public DisxAudioStreamingNode(String mediaUrl, BlockPos blockPos, MinecraftServer minecraftServer, ResourceLocation dimension, Player nodeOwner, boolean loop, int startTime, DisxAudioMotionType motionType, UUID entityUuid, int rogueRadius, ArrayList<DisxAudioFilterType> audioFilters){
+
+    public DisxAudioStreamingNode(String mediaUrl, BlockPos blockPos, MinecraftServer minecraftServer, ResourceLocation dimension, Player nodeOwner, boolean loop, DisxAudioMotionType motionType, UUID entityUuid, int rogueRadius, ArrayList<DisxAudioFilterType> audioFilters, ItemStack frequencyStack){
         DisxLogger.debug("New Audio Streaming Node called for; setting details (MOTION TYPE: " + motionType.name() + "); Running Async!");
         this.mediaUrl = mediaUrl;
         this.blockPos = blockPos;
@@ -85,6 +88,7 @@ public class DisxAudioStreamingNode {
         this.entityUuid = entityUuid;
         this.rogueRadius = rogueRadius;
         this.activeFilters = audioFilters;
+        this.frequencyStack = frequencyStack;
         try {
             this.www2PCMReference = new DisxWWW2PCMReference(this.mediaUrl);
         } catch (DisxMalformedURLException e){
@@ -351,10 +355,6 @@ public class DisxAudioStreamingNode {
         return preferredVolume;
     }
 
-    public static double getStreamInterval() {
-        return streamInterval;
-    }
-
     public DisxAudioMotionType getMotionType() {
         return motionType;
     }
@@ -367,5 +367,7 @@ public class DisxAudioStreamingNode {
 
     public ArrayList<DisxAudioFilterType> getActiveFilters() { return activeFilters; }
 
-
+    public ItemStack getFrequencyStack() {
+        return frequencyStack;
+    }
 }
