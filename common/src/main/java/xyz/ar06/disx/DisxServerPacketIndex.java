@@ -1,7 +1,9 @@
 package xyz.ar06.disx;
 
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
+import xyz.ar06.disx.entities.DisxSculkAdvancedJukeboxEntity;
 import xyz.ar06.disx.entities.DisxStampMakerEntity;
 import dev.architectury.networking.NetworkManager;
 import io.netty.buffer.Unpooled;
@@ -15,6 +17,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.UUID;
 
 public class DisxServerPacketIndex {
@@ -28,7 +31,7 @@ public class DisxServerPacketIndex {
         NetworkManager.registerReceiver(NetworkManager.Side.C2S, new ResourceLocation("disx","requestconfiginfo"), ServerPacketReceivers::onServerConfigRequest);
     }
 
-    public class ServerPacketReceivers {
+    public static class ServerPacketReceivers {
 
         public static void onPlayerRegistryRequest(FriendlyByteBuf buf, NetworkManager.PacketContext context){
             String name = "retrieveserveraudioregistry";
@@ -44,8 +47,15 @@ public class DisxServerPacketIndex {
                 DisxAudioMotionType motionType = node.getMotionType();
                 UUID entityUuid = node.getEntityUuid();
                 int rogueRadius = node.getRogueRadius();
-                ServerPackets.AudioRegistrySyncPackets.add(player, blockPos, dimensionLocation, nodeOwnerUuid, loop, preferredVolume, motionType, entityUuid, rogueRadius);
+                ItemStack frequencyStack = node.getFrequencyStack();
+                ServerPackets.AudioRegistrySyncPackets.add(player, blockPos, dimensionLocation, nodeOwnerUuid, loop, preferredVolume, motionType, entityUuid, rogueRadius, frequencyStack);
                 DisxLogger.debug("sent registry add event");
+            }
+            for (ItemStack frequencyStack : DisxServerAudioRegistry.FrequencyRegistry.entitiesOnFrequency.keySet()){
+                ArrayList<DisxSculkAdvancedJukeboxEntity> entityList = DisxServerAudioRegistry.FrequencyRegistry.entitiesOnFrequency.get(frequencyStack);
+                for (DisxSculkAdvancedJukeboxEntity entity : entityList){
+                    DisxServerPacketIndex.ServerPackets.frequencySync(frequencyStack, entity.getBlockPos(), entity.getLevel().dimension().location(), true, player);
+                }
             }
         }
 
@@ -99,11 +109,11 @@ public class DisxServerPacketIndex {
         }
     }
 
-    public class ServerPackets {
+    public static class ServerPackets {
 
-        public class AudioRegistrySyncPackets {
+        public static class AudioRegistrySyncPackets {
             private static void packetBuildSend(String type, Player player, BlockPos pos, ResourceLocation dimension, UUID playerOwner, Boolean loop,
-                                                   int preferredVolume, String motionType, UUID entityUuid, int rogueRadius){
+                                                   int preferredVolume, String motionType, UUID entityUuid, int rogueRadius, ItemStack frequencyStack){
                 FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
                 buf.writeUtf(type);
                 buf.writeBlockPos(pos);
@@ -114,28 +124,38 @@ public class DisxServerPacketIndex {
                 buf.writeUtf(motionType);
                 buf.writeUUID(entityUuid);
                 buf.writeInt(rogueRadius);
+                buf.writeItem(frequencyStack);
                 NetworkManager.sendToPlayer((ServerPlayer) player, new ResourceLocation("disx","serveraudioregistryevent"), buf);
             }
             public static void add(Player player, BlockPos pos, ResourceLocation dimension, UUID playerOwner, boolean loop,
-                                   int preferredVolume, DisxAudioMotionType motionType, UUID entityUuid, int rogueRadius){
-                packetBuildSend("add", player, pos, dimension, playerOwner, loop, preferredVolume, motionType.name(), entityUuid, rogueRadius);
+                                   int preferredVolume, DisxAudioMotionType motionType, UUID entityUuid, int rogueRadius, ItemStack frequencyStack){
+                packetBuildSend("add", player, pos, dimension, playerOwner, loop, preferredVolume, motionType.name(), entityUuid, rogueRadius, frequencyStack);
             }
 
             public static void modifyPrefVolume(Player player, BlockPos pos, ResourceLocation dimension, int preferredVolume, DisxAudioMotionType motionType, UUID entityUuid){
-                packetBuildSend("modify", player, pos, dimension, new UUID(0L, 0L), null, preferredVolume, motionType.name(), entityUuid, -1);
+                packetBuildSend("modify", player, pos, dimension, new UUID(0L, 0L), null, preferredVolume, motionType.name(), entityUuid, -1, ItemStack.EMPTY);
             }
 
             public static void modifyLoop(Player player, BlockPos pos, ResourceLocation dimension, boolean loop, DisxAudioMotionType motionType, UUID entityUuid){
-                packetBuildSend("modify", player, pos, dimension, new UUID(0L, 0L), loop, -1, motionType.name(), entityUuid, -1);
+                packetBuildSend("modify", player, pos, dimension, new UUID(0L, 0L), loop, -1, motionType.name(), entityUuid, -1, ItemStack.EMPTY);
             }
 
             public static void modifyRogueRadius(Player player, BlockPos pos, ResourceLocation dimension, DisxAudioMotionType motionType, UUID entityUuid, int rogueRadius){
-                packetBuildSend("modify", player, pos, dimension, new UUID(0L, 0L), null, -1, motionType.name(), entityUuid, rogueRadius);
+                packetBuildSend("modify", player, pos, dimension, new UUID(0L, 0L), null, -1, motionType.name(), entityUuid, rogueRadius, ItemStack.EMPTY);
             }
 
-            public static void remove(Player player, BlockPos pos, ResourceLocation dimension, UUID entityUuid, DisxAudioMotionType motionType){
-                packetBuildSend("remove", player, pos, dimension, new UUID(0L, 0L), false, -1, motionType.name(), entityUuid, -1);
+            public static void remove(Player player, BlockPos pos, ResourceLocation dimension, UUID entityUuid, DisxAudioMotionType motionType, ItemStack frequencyStack){
+                packetBuildSend("remove", player, pos, dimension, new UUID(0L, 0L), false, -1, motionType.name(), entityUuid, -1, frequencyStack);
             }
+        }
+
+        public static void frequencySync(ItemStack frequencyStack, BlockPos blockPos, ResourceLocation dimension, boolean add, Player player){
+            FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
+            buf.writeItem(frequencyStack);
+            buf.writeBlockPos(blockPos);
+            buf.writeResourceLocation(dimension);
+            buf.writeBoolean(add);
+            NetworkManager.sendToPlayer((ServerPlayer) player, new ResourceLocation("disx","frequencysyncevent"), buf);
         }
 
         public static void playingAudioMessage(String mediaUrl, Player player){

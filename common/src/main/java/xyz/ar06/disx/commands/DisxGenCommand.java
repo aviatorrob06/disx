@@ -60,7 +60,7 @@ public class DisxGenCommand {
 
     private static void runAsync(CommandContext<CommandSourceStack> context){
         String argumentResult = context.getArgument("discType", String.class);
-        String videoId = context.getArgument("audioUrl", String.class);
+        String mediaUrl = context.getArgument("audioUrl", String.class);
         try {
             boolean hasInternet = DisxInternetCheck.checkInternet();
             if (!hasInternet){
@@ -79,16 +79,16 @@ public class DisxGenCommand {
             ItemStack stack = disc.getDefaultInstance();
             stack.setCount(1);
             CompoundTag stackNbt = stack.getOrCreateTag();
-            videoId.replace(" ", "");
-            stackNbt.putString("videoId", videoId);
-            DisxLogger.debug(videoId);
+            mediaUrl.replace(" ", "");
+            stackNbt.putString("mediaUrl", mediaUrl);
+            DisxLogger.debug(mediaUrl);
             //OLD TITLE SCRAPER
             //RequestVideoInfo videoInfoRequest = new RequestVideoInfo(videoId);
             //DisxLogger.debug("videoInfoRequest Generated");
             //Response<VideoInfo> videoInfoResponse = null;
             //DisxLogger.debug("videoInfoResponse initialized");
             //videoInfoResponse = ytDownloader.getVideoInfo(videoInfoRequest);
-            DisxWWW2PCMReference www2PCMReference = new DisxWWW2PCMReference(videoId);
+            DisxWWW2PCMReference www2PCMReference = new DisxWWW2PCMReference(mediaUrl);
             String mediaTitle = www2PCMReference.probeTitle();
             int mediaLength = www2PCMReference.probeDuration();
             DisxLogger.debug("video length is " + mediaLength);

@@ -1,6 +1,7 @@
 package xyz.ar06.disx.client_only;
 
 import io.netty.buffer.ByteBuf;
+import net.minecraft.world.item.ItemStack;
 import xyz.ar06.disx.*;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
@@ -11,6 +12,49 @@ import java.util.*;
 
 public class DisxAudioInstanceRegistry {
 
+    public static class FrequencyRegistry {
+        public static HashMap<ItemStack, ArrayList<DisxAudioLocation>> locationsOnFrequency = new HashMap<>();
+
+        public static void addLocationToFrequency(ItemStack frequencyStack, BlockPos blockPos, ResourceLocation dimension){
+            ItemStack keyFrequencyStack = findFrequencyKey(frequencyStack);
+            if (keyFrequencyStack == null){
+                DisxAudioLocation audioLocation = new DisxAudioLocation(blockPos, dimension);
+                ArrayList<DisxAudioLocation> toAdd = new ArrayList<>();
+                toAdd.add(audioLocation);
+                locationsOnFrequency.put(frequencyStack, toAdd);
+            } else {
+                DisxAudioLocation audioLocation = new DisxAudioLocation(blockPos, dimension);
+                locationsOnFrequency.get(keyFrequencyStack).add(audioLocation);
+            }
+        }
+
+        public static void removeLocationFromFrequency(ItemStack frequencyStack, BlockPos blockPos, ResourceLocation dimension){
+            ItemStack keyFrequencyStack = findFrequencyKey(frequencyStack);
+            if (keyFrequencyStack != null){
+                locationsOnFrequency.get(keyFrequencyStack).remove(new DisxAudioLocation(blockPos, dimension));
+            }
+        }
+
+        public static ArrayList<DisxAudioLocation> getLocationOnFrequency(ItemStack frequencyStack){
+            ItemStack keyFrequencyStack = findFrequencyKey(frequencyStack);
+            if (keyFrequencyStack != null){
+                return locationsOnFrequency.get(keyFrequencyStack);
+            } else {
+                return new ArrayList<>();
+            }
+        }
+
+        private static ItemStack findFrequencyKey(ItemStack frequencyStack) {
+            for (ItemStack key : locationsOnFrequency.keySet()) {
+                if (ItemStack.isSameItemSameTags(key, frequencyStack)) {
+                    return key;
+                }
+            }
+
+            return null;
+        }
+    }
+
     public static LinkedList<DisxAudioInstance> registry = new LinkedList<>();
 
     public static LinkedList<UUID> muted = new LinkedList<>();
@@ -19,8 +63,8 @@ public class DisxAudioInstanceRegistry {
         DisxClientPacketIndex.ClientPackets.getServerAudioRegistry();
     }
 
-    public static void newAudioPlayer(BlockPos blockPos, ResourceLocation dimension, UUID instanceOwner, boolean loop, int preferredVolume, DisxAudioMotionType motionType, UUID entityUuid, int rogueRadius){
-        registry.add(new DisxAudioInstance(blockPos, dimension, instanceOwner, loop, preferredVolume, motionType, entityUuid, rogueRadius));
+    public static void newAudioInstance(BlockPos blockPos, ResourceLocation dimension, UUID instanceOwner, boolean loop, int preferredVolume, DisxAudioMotionType motionType, UUID entityUuid, int rogueRadius, ItemStack frequencyStack){
+        registry.add(new DisxAudioInstance(blockPos, dimension, instanceOwner, loop, preferredVolume, motionType, entityUuid, rogueRadius, frequencyStack));
         DisxLogger.debug("New DisxAudioInstance registered");
     }
 
@@ -107,6 +151,7 @@ public class DisxAudioInstanceRegistry {
             instance.deconstruct();
         }
         registry.clear();
+        FrequencyRegistry.locationsOnFrequency.clear();
     }
 
     public static void pauseAllRegisteredPlayers(){
@@ -130,27 +175,34 @@ public class DisxAudioInstanceRegistry {
         */
     }
 
-    public static void routeAudioData(ByteBuf buf, BlockPos blockPos, ResourceLocation dimension, UUID entityUuid, DisxAudioMotionType motionType){
+    public static void routeAudioData(ByteBuf buf, BlockPos blockPos, ResourceLocation dimension, UUID entityUuid, ItemStack frequencyStack, DisxAudioMotionType motionType){
         DisxLogger.debug("Trying to route audio data");
         if (!buf.isReadable()){
             DisxLogger.error(new DisxMalformedAudioPacketException("No readable data detected in packet buffer!"));
             return;
         }
         try {
+            byte[] audioData = new byte[DisxAudioFormatConstants.chunkSize];
+            buf.readBytes(audioData);
             if (motionType.equals(DisxAudioMotionType.STATIC)){
                 for (DisxAudioInstance instance : registry){
                     if (instance.getBlockPos().equals(blockPos) && instance.getDimension().equals(dimension) && instance.getMotionType().equals(DisxAudioMotionType.STATIC)){
-                        byte[] audioData = new byte[DisxAudioFormatConstants.chunkSize];
-                        buf.readBytes(audioData);
                         instance.addToPacketDataQueue(audioData);
                         break;
                     }
                 }
-            } else {
+            } else if (motionType.equals(DisxAudioMotionType.LIVE)) {
                 for (DisxAudioInstance instance : registry){
                     if (instance.getEntityUuid().equals(entityUuid) && instance.getMotionType().equals(DisxAudioMotionType.LIVE)){
-                        byte[] audioData = new byte[DisxAudioFormatConstants.chunkSize];
-                        buf.readBytes(audioData);
+                        instance.addToPacketDataQueue(audioData);
+                        break;
+                    }
+                }
+            } else if (motionType.equals(DisxAudioMotionType.INSYNC)){
+                DisxLogger.debug("Received audio data for INSYNC instance");
+                for (DisxAudioInstance instance : registry){
+                    if (ItemStack.isSameItemSameTags(instance.getFrequencyStack(), frequencyStack) && instance.getMotionType().equals(DisxAudioMotionType.INSYNC)){
+                        DisxLogger.debug("Found audio instance with corresponding frequency stack");
                         instance.addToPacketDataQueue(audioData);
                         break;
                     }

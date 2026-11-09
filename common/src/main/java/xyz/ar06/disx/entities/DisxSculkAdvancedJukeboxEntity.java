@@ -16,7 +16,9 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.ticks.ContainerSingleItem;
 import org.jetbrains.annotations.Nullable;
+import xyz.ar06.disx.DisxLogger;
 import xyz.ar06.disx.DisxMain;
+import xyz.ar06.disx.DisxServerAudioRegistry;
 import xyz.ar06.disx.blocks.DisxSculkAdvancedJukebox;
 
 public class DisxSculkAdvancedJukeboxEntity extends BlockEntity implements ContainerSingleItem, WorldlyContainer {
@@ -29,6 +31,7 @@ public class DisxSculkAdvancedJukeboxEntity extends BlockEntity implements Conta
                 blockPos,
                 blockState
         );
+        DisxLogger.debug("New entity");
     }
 
     @Override
@@ -55,12 +58,15 @@ public class DisxSculkAdvancedJukeboxEntity extends BlockEntity implements Conta
     public ItemStack removeItem(int i, int j) {
         ItemStack returnStack = inventory.get(0).copy();
         inventory.set(0, ItemStack.EMPTY);
+        DisxServerAudioRegistry.FrequencyRegistry.removeEntityFromFrequency(returnStack, this);
         return returnStack;
     }
 
     @Override
     public void setItem(int i, ItemStack itemStack) {
         inventory.set(0, itemStack);
+        DisxLogger.debug("Detected frequency stack added; calling for add to frequency registry");
+        DisxServerAudioRegistry.FrequencyRegistry.addEntityToFrequency(itemStack, this);
     }
 
     @Override
@@ -71,6 +77,10 @@ public class DisxSculkAdvancedJukeboxEntity extends BlockEntity implements Conta
     @Override
     public void load(CompoundTag compoundTag) {
         ContainerHelper.loadAllItems(compoundTag, inventory);
+        if (this.isHas_frequencyStack()){
+            DisxLogger.debug("Inventory loaded AND frequency stack was detected; calling for add to frequency registry");
+            DisxServerAudioRegistry.FrequencyRegistry.addEntityToFrequency(this.getFrequencyStack(), this);
+        }
         super.load(compoundTag);
     }
 
@@ -87,8 +97,12 @@ public class DisxSculkAdvancedJukeboxEntity extends BlockEntity implements Conta
         );
     }
 
-    public boolean isHas_frequencyFactor(){
-        return !(this.inventory.get(0).isEmpty());
+    public boolean isHas_frequencyStack(){
+        return !(getFrequencyStack().isEmpty());
+    }
+
+    public ItemStack getFrequencyStack(){
+        return this.inventory.get(0);
     }
 
 }

@@ -13,10 +13,10 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 import xyz.ar06.disx.audio_filters.*;
+import xyz.ar06.disx.entities.DisxSculkAdvancedJukeboxEntity;
 import xyz.ar06.disx.exceptions.DisxAudioStreamingNodeException;
 import xyz.ar06.disx.exceptions.DisxException;
 import xyz.ar06.disx.exceptions.DisxMalformedURLException;
-import xyz.ar06.disx.exceptions.DisxWWW2PCMException;
 import xyz.ar06.disx.utils.DisxWWW2PCMReference;
 
 import javax.sound.sampled.AudioInputStream;
@@ -171,6 +171,8 @@ public class DisxAudioStreamingNode {
                 int bytesRead;
                 long nextSendTime = System.nanoTime();
                 while (inputStream != null && !this.isPaused() && !Thread.currentThread().isInterrupted()){
+                    double maxPacketDistance = (double) (DisxModInfo.getAudioRadius() + 10);
+
                     long remaining = nextSendTime - System.nanoTime();
 
                     if (remaining > 0) {
@@ -181,6 +183,7 @@ public class DisxAudioStreamingNode {
                         break;
                     }
 
+
                     bytesRead = inputStream.read(buffer);
                     if (bytesRead != 0 && bytesRead != -1){
                         for (Player p : DisxServerAudioRegistry.getMcPlayers()) {
@@ -188,17 +191,10 @@ public class DisxAudioStreamingNode {
                                 Vec3 plrPos = p.getEyePosition();
                                 Vec3 blockPosVec = new Vec3(blockPos.getX() + 0.5, blockPos.getY() + 0.5, blockPos.getZ() + 0.5);
                                 double distance = plrPos.distanceTo(blockPosVec);
-                                double maxPacketDistance = (double) (DisxModInfo.getAudioRadius() + 10);
                                 if (distance <= maxPacketDistance){
-                                    FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
-                                    buf.writeBlockPos(this.blockPos);
-                                    buf.writeResourceLocation(this.dimension);
-                                    buf.writeUtf(this.motionType.name());
-                                    buf.writeUUID(this.entityUuid);
-                                    buf.writeBytes(buffer, 0, bytesRead);
-                                    DisxServerPacketIndex.ServerPackets.audioData(p, buf);
+                                    DisxServerPacketIndex.ServerPackets.audioData(p, prepareAudioPacketBuf(buffer, bytesRead));
                                 }
-                            } else {
+                            } else if (this.motionType.equals(DisxAudioMotionType.LIVE)){
                                 Vec3 plrPos = p.getEyePosition();
                                 Vec3 entityPos = null;
                                 for (ServerLevel level : minecraftServer.getAllLevels()){
@@ -209,26 +205,42 @@ public class DisxAudioStreamingNode {
                                 }
                                 if (entityPos != null){
                                     double distance = plrPos.distanceTo(entityPos);
-                                    double maxPacketDistance = (double) (DisxModInfo.getAudioRadius() + 10);
                                     if (distance <= maxPacketDistance) {
-                                        FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
-                                        buf.writeBlockPos(this.blockPos);
-                                        buf.writeResourceLocation(this.dimension);
-                                        buf.writeUtf(this.motionType.name());
-                                        buf.writeUUID(this.entityUuid);
-                                        buf.writeBytes(buffer, 0, bytesRead);
-                                        DisxServerPacketIndex.ServerPackets.audioData(p, buf);
+                                        DisxServerPacketIndex.ServerPackets.audioData(p, prepareAudioPacketBuf(buffer, bytesRead));
                                     }
                                 } else {
-                                    FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
-                                    buf.writeBlockPos(this.blockPos);
-                                    buf.writeResourceLocation(this.dimension);
-                                    buf.writeUtf(this.motionType.name());
-                                    buf.writeUUID(this.entityUuid);
-                                    buf.writeBytes(buffer, 0, bytesRead);
-                                    DisxServerPacketIndex.ServerPackets.audioData(p, buf);
+                                    DisxServerPacketIndex.ServerPackets.audioData(p, prepareAudioPacketBuf(buffer, bytesRead));
                                 }
 
+                            } else if (this.motionType.equals(DisxAudioMotionType.INSYNC)){
+                                DisxLogger.debug("This is INSYNC motion type");
+                                boolean withinDistance = false;
+
+                                for (DisxSculkAdvancedJukeboxEntity entity : DisxServerAudioRegistry.FrequencyRegistry.getEntitiesOnFrequency(this.frequencyStack)) {
+                                    DisxLogger.debug("Checking sculk advanced jukebox entity dimension and distance");
+                                    if (entity.getLevel().dimension().equals(p.level().dimension())) {
+                                        DisxLogger.debug("In dimension. Checking if in distance");
+                                        BlockPos blockPos = entity.getBlockPos();
+
+                                        Vec3 blockPosVec = new Vec3(
+                                                blockPos.getX() + 0.5,
+                                                blockPos.getY() + 0.5,
+                                                blockPos.getZ() + 0.5
+                                        );
+
+                                        double distance = p.getEyePosition().distanceTo(blockPosVec);
+
+                                        if (distance <= maxPacketDistance) {
+                                            withinDistance = true;
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                if (withinDistance){
+                                    DisxLogger.debug("Was in distance");
+                                    DisxServerPacketIndex.ServerPackets.audioData(p, prepareAudioPacketBuf(buffer, bytesRead));
+                                }
                             }
 
                         }
@@ -262,6 +274,17 @@ public class DisxAudioStreamingNode {
                 DisxAudioStreamingNodeException exception = new DisxAudioStreamingNodeException(e.getMessage(), e);
                 DisxLogger.error(exception);
             }
+    }
+
+    private FriendlyByteBuf prepareAudioPacketBuf(byte[] buffer, int bytesRead){
+        FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
+        buf.writeBlockPos(this.blockPos);
+        buf.writeResourceLocation(this.dimension);
+        buf.writeUtf(this.motionType.name());
+        buf.writeUUID(this.entityUuid);
+        buf.writeItem(this.frequencyStack);
+        buf.writeBytes(buffer, 0, bytesRead);
+        return buf;
     }
 
     public void setDimension(ResourceLocation dimension) {

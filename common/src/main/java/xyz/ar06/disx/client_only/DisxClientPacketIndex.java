@@ -1,6 +1,6 @@
 package xyz.ar06.disx.client_only;
 
-import io.netty.buffer.ByteBuf;
+import net.minecraft.world.item.ItemStack;
 import xyz.ar06.disx.DisxAudioMotionType;
 import xyz.ar06.disx.DisxLogger;
 import xyz.ar06.disx.DisxSystemMessages;
@@ -36,6 +36,7 @@ public class DisxClientPacketIndex  {
         NetworkManager.registerReceiver(NetworkManager.Side.S2C, new ResourceLocation("disx","loopmsg"), ClientPacketReceivers::receiveLoopMsg);
         NetworkManager.registerReceiver(NetworkManager.Side.S2C, new ResourceLocation("disx","pausemsg"), ClientPacketReceivers::receivePauseMsg);
         NetworkManager.registerReceiver(NetworkManager.Side.S2C, new ResourceLocation("disx", "configinfo"), ClientPacketReceivers::receiveConfigInfo);
+        NetworkManager.registerReceiver(NetworkManager.Side.S2C, new ResourceLocation("disx", "frequencysyncevent"), ClientPacketReceivers::receiveFrequencySync);
     }
 
     public class ClientPacketReceivers{
@@ -69,10 +70,11 @@ public class DisxClientPacketIndex  {
             }
             UUID entityUuid = buf.readUUID();
             int rogueRadius = buf.readInt();
+            ItemStack frequencyStack = buf.readItem();
             if (type.equals("add")){
                 DisxLogger.debug("calling for add");
                 CompletableFuture.runAsync(() -> {
-                    DisxAudioInstanceRegistry.newAudioPlayer(blockPos, dimensionLocation, instanceOwner, loop, preferredVolume, motionType, entityUuid, rogueRadius);
+                    DisxAudioInstanceRegistry.newAudioInstance(blockPos, dimensionLocation, instanceOwner, loop, preferredVolume, motionType, entityUuid, rogueRadius, frequencyStack);
                 });
             }
             if (type.equals("remove")){
@@ -159,8 +161,9 @@ public class DisxClientPacketIndex  {
                     motionType = DisxAudioMotionType.STATIC;
                 }
                 UUID entityUuid = friendlyPacket.readUUID();
+                ItemStack frequencyStack = friendlyPacket.readItem();
                 //ByteBuf bufCopy = buf.copy();
-                DisxAudioInstanceRegistry.routeAudioData(friendlyPacket, blockPos, dimension, entityUuid, motionType);
+                DisxAudioInstanceRegistry.routeAudioData(friendlyPacket, blockPos, dimension, entityUuid, frequencyStack, motionType);
             }, audioReadExecutor);
         }
 
@@ -180,6 +183,18 @@ public class DisxClientPacketIndex  {
             DisxConfigRecordS2C.setDetails(audioRadius, soundParticles);
         }
 
+        public static void receiveFrequencySync(FriendlyByteBuf buf, NetworkManager.PacketContext packetContext) {
+            DisxLogger.debug("Received frequency sync packet");
+            ItemStack frequencyStack = buf.readItem();
+            BlockPos blockPos = buf.readBlockPos();
+            ResourceLocation dimension = buf.readResourceLocation();
+            boolean add = buf.readBoolean();
+            if (add){
+                DisxAudioInstanceRegistry.FrequencyRegistry.addLocationToFrequency(frequencyStack, blockPos, dimension);
+            } else {
+                DisxAudioInstanceRegistry.FrequencyRegistry.removeLocationFromFrequency(frequencyStack, blockPos, dimension);
+            }
+        }
     }
 
     public class ClientPackets{

@@ -74,7 +74,7 @@ public class DisxSculkAdvancedJukebox extends BaseEntityBlock {
                             DisxLogger.debug("Frequency stack is not empty");
                             if (!inventoryManager.getDiscInventory(jukeboxEntity.getItem(0)).equals(ItemStack.EMPTY)){
                                 DisxLogger.debug("Disc inventory is not empty, returning disc");
-                                ItemStack returnStack = inventoryManager.removeDiscFromInventory(jukeboxEntity.getItem(0).copy());
+                                ItemStack returnStack = inventoryManager.removeDiscFromInventory(jukeboxEntity.getItem(0).copy(), level);
                                 player.addItem(returnStack);
                                 level.playSound(null, blockPos, SoundEvents.SCULK_CATALYST_BREAK, SoundSource.BLOCKS, 1F, 1F);
                                 return InteractionResult.SUCCESS;
@@ -86,7 +86,7 @@ public class DisxSculkAdvancedJukebox extends BaseEntityBlock {
                             DisxLogger.debug("Frequency stack not empty");
                             if (inventoryManager.getDiscInventory(jukeboxEntity.getItem(0)).equals(ItemStack.EMPTY)){
                                 DisxLogger.debug("Disc inventory empty, putting disc in");
-                                inventoryManager.setDiscInventory(jukeboxEntity.getItem(0).copy(), handStack.copyWithCount(1));
+                                inventoryManager.setDiscInventory(jukeboxEntity.getItem(0).copy(), handStack.copyWithCount(1), level);
                                 handStack.shrink(1);
                                 level.playSound(null, blockPos, SoundEvents.SCULK_CATALYST_PLACE, SoundSource.BLOCKS, 1F, 1F);
                                 vibrationParticle(level, blockPos);
@@ -108,7 +108,7 @@ public class DisxSculkAdvancedJukebox extends BaseEntityBlock {
             if (entity == null) {
                 DisxLogger.debug("block destroy initialized, no block entity found");
             } else {
-                if (entity.isHas_frequencyFactor()) {
+                if (entity.isHas_frequencyStack()) {
                     DisxLogger.debug("block destroy initialized, has frequency factor; removing it and dropping it");
                     ItemStack newItemStack = entity.removeItem(0, 1);
                     ItemEntity itemEntity = new ItemEntity(entity.getLevel(), blockPos.getX(), blockPos.getY(), blockPos.getZ(), newItemStack);

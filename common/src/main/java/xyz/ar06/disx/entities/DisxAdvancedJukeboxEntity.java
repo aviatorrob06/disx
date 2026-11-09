@@ -78,7 +78,7 @@ public class DisxAdvancedJukeboxEntity extends BlockEntity implements ContainerS
         ItemStack returnStack = itemInventory.get(i).copy();
         itemInventory.set(i, ItemStack.EMPTY);
         if (returnStack.getItem() instanceof DisxCustomDisc){
-            DisxServerAudioRegistry.removeFromRegistry(this.getBlockPos(), this.getLevel().dimension(), new UUID(0L, 0L), DisxAudioMotionType.STATIC);
+            DisxServerAudioRegistry.removeFromRegistry(this.getBlockPos(), this.getLevel().dimension(), new UUID(0L, 0L), DisxAudioMotionType.STATIC, ItemStack.EMPTY);
 
         }
         return returnStack;

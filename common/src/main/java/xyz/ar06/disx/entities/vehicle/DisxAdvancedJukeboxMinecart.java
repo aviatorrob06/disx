@@ -181,7 +181,7 @@ public class DisxAdvancedJukeboxMinecart extends Minecart implements ContainerEn
 
     @Override
     public void remove(RemovalReason removalReason) {
-        DisxServerAudioRegistry.removeFromRegistry(BlockPos.ZERO, this.level().dimension(), this.getUUID(), DisxAudioMotionType.LIVE);
+        DisxServerAudioRegistry.removeFromRegistry(BlockPos.ZERO, this.level().dimension(), this.getUUID(), DisxAudioMotionType.LIVE, ItemStack.EMPTY);
         ItemStack stack = getItem(0);
         if (!stack.isEmpty()){
             ItemStack drop = stack.copyWithCount(1);
@@ -217,7 +217,7 @@ public class DisxAdvancedJukeboxMinecart extends Minecart implements ContainerEn
         ItemStack stack = items.get(i).copyWithCount(1);
         items.set(0, ItemStack.EMPTY);
         if (stack.getItem() instanceof DisxCustomDisc){
-            DisxServerAudioRegistry.removeFromRegistry(this.getOnPos(), this.level().dimension(), this.getUUID(), DisxAudioMotionType.LIVE);
+            DisxServerAudioRegistry.removeFromRegistry(this.getOnPos(), this.level().dimension(), this.getUUID(), DisxAudioMotionType.LIVE, ItemStack.EMPTY);
         }
         this.setChanged();
         return stack;

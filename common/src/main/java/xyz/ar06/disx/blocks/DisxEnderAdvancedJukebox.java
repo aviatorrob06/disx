@@ -103,7 +103,7 @@ public class DisxEnderAdvancedJukebox extends Block{
                             DisxLogger.debug("Detected record, returning it and killing audio");
                             ItemStack returnStack = invList.get(0).copyWithCount(1);
                             invList.set(0, ItemStack.EMPTY);
-                            DisxServerAudioRegistry.removeFromRegistry(blockPos, level.dimension(), player.getUUID(), DisxAudioMotionType.LIVE);
+                            DisxServerAudioRegistry.removeFromRegistry(blockPos, level.dimension(), player.getUUID(), DisxAudioMotionType.LIVE, ItemStack.EMPTY);
                             player.addItem(returnStack);
                             helper.disx$setEnderAdvancedJukeboxInventory(ContainerHelper.saveAllItems(new CompoundTag(), invList));
                             level.playSound(null, blockPos, SoundEvents.ENDER_EYE_DEATH, SoundSource.BLOCKS, 1.0F, 1.0F);
@@ -126,7 +126,7 @@ public class DisxEnderAdvancedJukebox extends Block{
                             DisxLogger.debug("Detected record, returning it and killing audio");
                             ItemStack returnStack = invList.get(0).copyWithCount(1);
                             invList.set(0, ItemStack.EMPTY);
-                            DisxServerAudioRegistry.removeFromRegistry(blockPos, level.dimension(), player.getUUID(), DisxAudioMotionType.LIVE);
+                            DisxServerAudioRegistry.removeFromRegistry(blockPos, level.dimension(), player.getUUID(), DisxAudioMotionType.LIVE, ItemStack.EMPTY);
                             player.addItem(returnStack);
                             helper.disx$setEnderAdvancedJukeboxInventory(ContainerHelper.saveAllItems(new CompoundTag(), invList));
                             level.playSound(null, blockPos, SoundEvents.ENDER_EYE_DEATH, SoundSource.BLOCKS, 1.0F, 1.0F);

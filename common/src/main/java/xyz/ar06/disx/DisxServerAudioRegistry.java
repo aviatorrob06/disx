@@ -17,50 +17,66 @@ import java.util.*;
 
 public class DisxServerAudioRegistry {
 
-    public static LinkedList<Player> players = new LinkedList<>();
-    public static LinkedList<DisxAudioStreamingNode> registry = new LinkedList<>();
-    public static HashMap<ItemStack, ArrayList<DisxSculkAdvancedJukeboxEntity>> entitiesOnFrequency = new HashMap<>();
+    public static class FrequencyRegistry{
+        public static HashMap<ItemStack, ArrayList<DisxSculkAdvancedJukeboxEntity>> entitiesOnFrequency = new HashMap<>();
 
-    public static void addEntityToFrequency(ItemStack frequencyStack, DisxSculkAdvancedJukeboxEntity entity){
-        ItemStack keyFrequencyStack = findFrequencyKey(frequencyStack);
-        if (keyFrequencyStack == null){
-            ArrayList<DisxSculkAdvancedJukeboxEntity> toAdd = new ArrayList<>();
-            toAdd.add(entity);
-            entitiesOnFrequency.put(frequencyStack, toAdd);
-        }
-    }
-
-    public static void removeEntityFromFrequency(ItemStack frequencyStack, DisxSculkAdvancedJukeboxEntity entity){
-        ItemStack keyFrequencyStack = findFrequencyKey(frequencyStack);
-        if (keyFrequencyStack != null){
-            entitiesOnFrequency.get(keyFrequencyStack).remove(entity);
-        }
-    }
-
-    public static void removeEntityFromFrequency(DisxSculkAdvancedJukeboxEntity entity){
-        for (ArrayList<DisxSculkAdvancedJukeboxEntity> arrayList : entitiesOnFrequency.values()){
-            arrayList.remove(entity);
-        }
-    }
-
-    public static ArrayList<DisxSculkAdvancedJukeboxEntity> getEntitiesOnFrequency(ItemStack frequencyStack){
-        ItemStack keyFrequencyStack = findFrequencyKey(frequencyStack);
-        if (keyFrequencyStack != null){
-            return entitiesOnFrequency.get(keyFrequencyStack);
-        } else {
-            return new ArrayList<>();
-        }
-    }
-
-    private static ItemStack findFrequencyKey(ItemStack frequencyStack) {
-        for (ItemStack key : entitiesOnFrequency.keySet()) {
-            if (ItemStack.isSameItemSameTags(key, frequencyStack)) {
-                return key;
+        public static void addEntityToFrequency(ItemStack frequencyStack, DisxSculkAdvancedJukeboxEntity entity){
+            DisxLogger.debug("Adding DisxSculkAdvancedJukeboxEntity to frequency registry");
+            ItemStack keyFrequencyStack = findFrequencyKey(frequencyStack);
+            if (keyFrequencyStack == null){
+                ArrayList<DisxSculkAdvancedJukeboxEntity> toAdd = new ArrayList<>();
+                toAdd.add(entity);
+                entitiesOnFrequency.put(frequencyStack, toAdd);
+                for (Player player : players){
+                    DisxServerPacketIndex.ServerPackets.frequencySync(frequencyStack, entity.getBlockPos(), entity.getLevel().dimension().location(), true, player);
+                }
+            } else {
+                ArrayList<DisxSculkAdvancedJukeboxEntity> toAdd = entitiesOnFrequency.get(keyFrequencyStack);
+                if (toAdd.contains(entity)){
+                    return;
+                }
+                toAdd.add(entity);
+                entitiesOnFrequency.replace(frequencyStack, toAdd);
+                for (Player player : players){
+                    DisxServerPacketIndex.ServerPackets.frequencySync(frequencyStack, entity.getBlockPos(), entity.getLevel().dimension().location(), true, player);
+                }
             }
         }
 
-        return null;
+        public static void removeEntityFromFrequency(ItemStack frequencyStack, DisxSculkAdvancedJukeboxEntity entity){
+            DisxLogger.debug("Removing DisxSculkAdvancedJukeboxEntity from frequency registry");
+            ItemStack keyFrequencyStack = findFrequencyKey(frequencyStack);
+            if (keyFrequencyStack != null){
+                entitiesOnFrequency.get(keyFrequencyStack).remove(entity);
+                for (Player player : players){
+                    DisxServerPacketIndex.ServerPackets.frequencySync(frequencyStack, entity.getBlockPos(), entity.getLevel().dimension().location(), false, player);
+                }
+            }
+        }
+
+        public static ArrayList<DisxSculkAdvancedJukeboxEntity> getEntitiesOnFrequency(ItemStack frequencyStack){
+            ItemStack keyFrequencyStack = findFrequencyKey(frequencyStack);
+            if (keyFrequencyStack != null){
+                return entitiesOnFrequency.get(keyFrequencyStack);
+            } else {
+                return new ArrayList<>();
+            }
+        }
+
+        private static ItemStack findFrequencyKey(ItemStack frequencyStack) {
+            for (ItemStack key : entitiesOnFrequency.keySet()) {
+                if (ItemStack.isSameItemSameTags(key, frequencyStack)) {
+                    return key;
+                }
+            }
+
+            return null;
+        }
+
     }
+
+    public static LinkedList<Player> players = new LinkedList<>();
+    public static LinkedList<DisxAudioStreamingNode> registry = new LinkedList<>();
 
     //Default variant
     public static void addToRegistry(BlockPos pos, String mediaUrl, Player player, MinecraftServer minecraftServer, ResourceKey<Level> dimension, boolean loop, DisxAudioMotionType motionType, UUID entityUuid, int rogueRadius, ArrayList<DisxAudioFilterType> audioFilters, ItemStack frequencyStack){
@@ -71,11 +87,11 @@ public class DisxServerAudioRegistry {
         registry.add(new DisxAudioStreamingNode(mediaUrl, pos, minecraftServer, dimensionLocation, player, loop, motionType, entityUuid, rogueRadius, audioFilters, frequencyStack));
         if (player == null){
             players.forEach(plr -> {
-                DisxServerPacketIndex.ServerPackets.AudioRegistrySyncPackets.add(plr, pos, dimensionLocation, new UUID(0L, 0L), loop, 100, motionType, entityUuid, rogueRadius);
+                DisxServerPacketIndex.ServerPackets.AudioRegistrySyncPackets.add(plr, pos, dimensionLocation, new UUID(0L, 0L), loop, 100, motionType, entityUuid, rogueRadius, frequencyStack);
             });
         } else {
             players.forEach(plr -> {
-                DisxServerPacketIndex.ServerPackets.AudioRegistrySyncPackets.add(plr, pos, dimensionLocation, player.getUUID(), loop, 100, motionType, entityUuid, rogueRadius);
+                DisxServerPacketIndex.ServerPackets.AudioRegistrySyncPackets.add(plr, pos, dimensionLocation, player.getUUID(), loop, 100, motionType, entityUuid, rogueRadius, frequencyStack);
             });
         }
 
@@ -94,11 +110,11 @@ public class DisxServerAudioRegistry {
 
         if (player == null){
             players.forEach(plr -> {
-                DisxServerPacketIndex.ServerPackets.AudioRegistrySyncPackets.add(plr, pos, dimensionLocation, new UUID(0L, 0L), loop, volume, DisxAudioMotionType.STATIC, new UUID(0L, 0L), -1);
+                DisxServerPacketIndex.ServerPackets.AudioRegistrySyncPackets.add(plr, pos, dimensionLocation, new UUID(0L, 0L), loop, volume, DisxAudioMotionType.STATIC, new UUID(0L, 0L), -1, ItemStack.EMPTY);
             });
         } else {
             players.forEach(plr -> {
-                DisxServerPacketIndex.ServerPackets.AudioRegistrySyncPackets.add(plr, pos, dimensionLocation, player.getUUID(), loop, volume, DisxAudioMotionType.STATIC, new UUID(0L, 0L), -1);
+                DisxServerPacketIndex.ServerPackets.AudioRegistrySyncPackets.add(plr, pos, dimensionLocation, player.getUUID(), loop, volume, DisxAudioMotionType.STATIC, new UUID(0L, 0L), -1, ItemStack.EMPTY);
             });
         }
 
@@ -109,21 +125,24 @@ public class DisxServerAudioRegistry {
         ResourceLocation dimensionLocation = node.getDimension();
         DisxAudioMotionType motionType = node.getMotionType();
         UUID entityUuid = node.getEntityUuid();
-        if (pos == null || dimensionLocation == null){
+        ItemStack frequencyStack = node.getFrequencyStack();
+        registry.remove(node);
+        if ((pos == null && dimensionLocation == null && motionType.equals(DisxAudioMotionType.STATIC)) ||
+                (entityUuid.equals(new UUID(0L, 0L)) && motionType.equals(DisxAudioMotionType.LIVE)) ||
+                (frequencyStack.isEmpty() && motionType.equals(DisxAudioMotionType.INSYNC))){
             return;
         }
         players.forEach(plr -> {
-            DisxServerPacketIndex.ServerPackets.AudioRegistrySyncPackets.remove(plr, pos, dimensionLocation, entityUuid, motionType);
+            DisxServerPacketIndex.ServerPackets.AudioRegistrySyncPackets.remove(plr, pos, dimensionLocation, entityUuid, motionType, frequencyStack);
         });
         node.deconstruct();
-        registry.remove(node);
     }
 
-    public static void removeFromRegistry(BlockPos pos, ResourceKey<Level> dimension, UUID entityUuid, DisxAudioMotionType motionType){
+    public static void removeFromRegistry(BlockPos pos, ResourceKey<Level> dimension, UUID entityUuid, DisxAudioMotionType motionType, ItemStack frequencyStack){
         DisxLogger.debug("Calling remove from registry");
         ResourceLocation dimensionLocation = dimension.location();
         players.forEach(plr -> {
-            DisxServerPacketIndex.ServerPackets.AudioRegistrySyncPackets.remove(plr, pos, dimensionLocation, entityUuid, motionType);
+            DisxServerPacketIndex.ServerPackets.AudioRegistrySyncPackets.remove(plr, pos, dimensionLocation, entityUuid, motionType, frequencyStack);
         });
         if (motionType.equals(DisxAudioMotionType.LIVE)){
             for (DisxAudioStreamingNode node : registry){
@@ -133,12 +152,19 @@ public class DisxServerAudioRegistry {
                     break;
                 }
             }
-        } else {
+        } else if (motionType.equals(DisxAudioMotionType.STATIC)){
             for (DisxAudioStreamingNode node : registry){
                 if (node.getBlockPos().equals(pos) && node.getDimension().equals(dimensionLocation) && node.getMotionType().equals(DisxAudioMotionType.STATIC)){
                     node.deconstruct();
                     registry.remove(node);
                     break;
+                }
+            }
+        } else {
+            for (DisxAudioStreamingNode node : registry){
+                if (ItemStack.isSameItemSameTags(frequencyStack, node.getFrequencyStack()) && node.getMotionType().equals(DisxAudioMotionType.INSYNC)){
+                    node.deconstruct();
+                    registry.remove(node);
                 }
             }
         }
@@ -200,6 +226,15 @@ public class DisxServerAudioRegistry {
         return false;
     }
 
+    public static boolean isNodeOnFrequency(ItemStack frequencyStack){
+        for (DisxAudioStreamingNode node : registry){
+            if (ItemStack.isSameItemSameTags(node.getFrequencyStack(), frequencyStack) && node.getMotionType().equals(DisxAudioMotionType.INSYNC)){
+                return true;
+            }
+        }
+        return false;
+    }
+
     public static boolean isUnpausedAtLocation(BlockPos blockPos, ResourceKey<Level> dimension){
         for (DisxAudioStreamingNode node : registry){
             if (node.getBlockPos().equals(blockPos) && node.getDimension().equals(dimension.location()) && !node.isPaused() && node.getMotionType().equals(DisxAudioMotionType.STATIC)){
@@ -218,12 +253,22 @@ public class DisxServerAudioRegistry {
         return false;
     }
 
+    public static boolean isUnpausedOnFrequency(ItemStack frequencyStack){
+        for (DisxAudioStreamingNode node : registry){
+            if (ItemStack.isSameItemSameTags(node.getFrequencyStack(), frequencyStack) && node.getMotionType().equals(DisxAudioMotionType.INSYNC) && !node.isPaused()){
+                return true;
+            }
+        }
+        return false;
+    }
+
 
     public static void onServerClose(){
         for (DisxAudioStreamingNode node : registry){
             node.deconstruct();
         }
         registry.clear();
+        FrequencyRegistry.entitiesOnFrequency.clear();
     }
 
     public static int getRegistryCount(){

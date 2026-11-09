@@ -1,5 +1,6 @@
 package xyz.ar06.disx.utils;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -7,15 +8,26 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.Container;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.saveddata.SavedData;
+import xyz.ar06.disx.DisxAudioMotionType;
+import xyz.ar06.disx.DisxServerAudioRegistry;
+import xyz.ar06.disx.audio_filters.DisxAudioFilterType;
+import xyz.ar06.disx.enchantments.DisxDiscEnchantmentHelper;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.UUID;
 
 public class DisxSculkAdvancedJukeboxInventoryManager extends SavedData {
     private final HashMap<ItemStack, ItemStack> inventories = new HashMap<>();
 
-    public boolean setDiscInventory(ItemStack frequencyStack, ItemStack discStack){
+    public boolean setDiscInventory(ItemStack frequencyStack, ItemStack discStack, Level level){
         inventories.put(frequencyStack.copy(), discStack.copy());
+        CompoundTag stackTag = discStack.getTag();
+        String mediaUrl = stackTag.getString("mediaUrl");
+        ArrayList<DisxAudioFilterType> audioFilters = DisxDiscEnchantmentHelper.buildAudioFilterArray(discStack);
+        DisxServerAudioRegistry.addToRegistry(new BlockPos(0, 0, 0), mediaUrl, null, level.getServer(), level.dimension(), false, DisxAudioMotionType.INSYNC, new UUID(0L, 0L), -1, audioFilters, frequencyStack.copy());
         setDirty();
         return true;
     }
@@ -35,10 +47,11 @@ public class DisxSculkAdvancedJukeboxInventoryManager extends SavedData {
         return null;
     }
 
-    public ItemStack removeDiscFromInventory(ItemStack frequencyStack){
+    public ItemStack removeDiscFromInventory(ItemStack frequencyStack, Level level){
         ItemStack key = findFrequencyKey(frequencyStack);
         ItemStack returnStack = inventories.get(key);
         inventories.remove(key);
+        DisxServerAudioRegistry.removeFromRegistry(new BlockPos(0, 0, 0), level.dimension(), new UUID(0L, 0L), DisxAudioMotionType.INSYNC, frequencyStack.copy());
         setDirty();
         return returnStack;
     }

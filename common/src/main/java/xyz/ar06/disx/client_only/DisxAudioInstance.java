@@ -1,8 +1,6 @@
 package xyz.ar06.disx.client_only;
 
 import dev.architectury.event.events.client.ClientTickEvent;
-import net.fabricmc.api.EnvType;
-import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
@@ -11,14 +9,15 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 import xyz.ar06.disx.DisxAudioFormatConstants;
 import xyz.ar06.disx.DisxAudioMotionType;
 import xyz.ar06.disx.DisxLogger;
 
 import javax.sound.sampled.*;
+import java.util.ArrayList;
 import java.util.ConcurrentModificationException;
-import java.util.LinkedList;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -53,7 +52,8 @@ public class DisxAudioInstance {
     private DisxAudioMotionType motionType;
     private UUID entityUuid;
     private int rogueRadius;
-    public DisxAudioInstance(BlockPos blockPos, ResourceLocation dimension, UUID instanceOwner, boolean loop, int preferredVolume, DisxAudioMotionType motionType, UUID entityUuid, int rogueRadius){
+    private ItemStack frequencyStack;
+    public DisxAudioInstance(BlockPos blockPos, ResourceLocation dimension, UUID instanceOwner, boolean loop, int preferredVolume, DisxAudioMotionType motionType, UUID entityUuid, int rogueRadius, ItemStack frequencyStack){
         DisxLogger.debug("New DisxAudioInstance called for; setting details:");
         this.blockPos = blockPos;
         this.dimension = dimension;
@@ -63,6 +63,7 @@ public class DisxAudioInstance {
         this.motionType = motionType;
         this.entityUuid = entityUuid;
         this.rogueRadius = rogueRadius;
+        this.frequencyStack = frequencyStack;
         DisxLogger.debug("Details set successfully");
         DisxLogger.debug("Building audio line and controls");
         this.buildAudioLine();
@@ -210,75 +211,133 @@ public class DisxAudioInstance {
         if (this.volumeControl != null && this.balanceControl != null && this.audioLine != null) {
             LocalPlayer plr = Minecraft.getInstance().player;
             ResourceLocation dimension = this.dimension;
-            if (plr != null){
-                if (plr.level() != null){
-                    if (plr.level().dimension().location().equals(dimension)) {
-                        if (DisxAudioInstanceRegistry.isMuted(this.instanceOwner)){
-                            DisxLogger.debug("is muted");
-                            volumeControl.setValue(-80f);
-                            playerCanHear = false;
-                        } else {
-                            BlockPos blockPos = null;
-                            if (this.motionType.equals(DisxAudioMotionType.LIVE)){
-                                for (Entity entity : clientLevel.entitiesForRendering()){
-                                    if (entity.getUUID().equals(this.entityUuid)){
-                                        blockPos = new BlockPos(entity.getBlockX(), entity.getBlockY(), entity.getBlockZ());
-                                    }
-                                }
-                            } else {
-                                blockPos = this.blockPos;
-                            }
-                            if (blockPos != null){
-                                Vec3 currentpos = Minecraft.getInstance().getCameraEntity().getPosition(0.01f);
-                                Vec3 blockPosVec = new Vec3(blockPos.getX() + 0.5, blockPos.getY() + 0.5, blockPos.getZ() + 0.5);
-                                double distance = currentpos.distanceTo(blockPosVec);
-                                double maxDistance = (double) DisxConfigRecordS2C.getAudioRadius();
-                                double plrVolumeConfig_RECORDS = Minecraft.getInstance().options.getSoundSourceOptionInstance(SoundSource.RECORDS).get();
-                                double plrVolumeConfig_MASTER = Minecraft.getInstance().options.getSoundSourceOptionInstance(SoundSource.MASTER).get();
-                                double volumeCalc = Math.max(0.0f, 1.0f - (distance / maxDistance));
-                                volumeCalc *= (plrVolumeConfig_MASTER * plrVolumeConfig_RECORDS);
-                                volumeCalc *= ((double) this.preferredVolume / 100);
-                                float volumeCalc_line = 20.0f * (float) Math.log10(Math.max(0.01f, volumeCalc));
-                                if (distance >= maxDistance || preferredVolume == 0){
-                                    volumeCalc_line = -80f;
-                                }
-                                if (volumeCalc_line < -80f) {
-                                    volumeCalc_line = -80f;
-                                }
-                                if (volumeCalc_line > 6.0206) {
-                                    volumeCalc_line = 6.0206f;
-                                }
-                                if (volumeControl != null) volumeControl.setValue(volumeCalc_line);
-
-                                if (volumeCalc_line <= -80f) {
-                                    playerCanHear = false;
-                                } else {
-                                    playerCanHear = true;
-                                }
-
-                                if (plrVolumeConfig_RECORDS != 0.0 && volumeCalc_line > -80f && plrVolumeConfig_MASTER != 0.0 && playerCanHear) {
-                                    try {
-                                        MusicManager musicManager = Minecraft.getInstance().getMusicManager();
-                                        Minecraft.getInstance().getMusicManager().tick();
-                                        musicManager.stopPlaying();
-                                    } catch (NullPointerException e) {
-                                        DisxLogger.error("Audio Instance at " + blockPos + " was unsuccessful in pausing client music, got NullPointerException:" + e);
-                                    }
-                                }
-                            } else {
-                                if (volumeControl != null) volumeControl.setValue(-80f);
-                                playerCanHear = false;
-                            }
-                        }
-                    } else {
-                        if (volumeControl != null) volumeControl.setValue(-80f);
+            if (plr != null) {
+                if (plr.level() != null) {
+                    if (DisxAudioInstanceRegistry.isMuted(this.instanceOwner)) {
+                        DisxLogger.debug("is muted");
+                        volumeControl.setValue(-80f);
                         playerCanHear = false;
+                    } else {
+                        ArrayList<DisxAudioLocation> audioLocations = new ArrayList<>();
+
+                        if (this.motionType.equals(DisxAudioMotionType.LIVE)) {
+                            for (Entity entity : clientLevel.entitiesForRendering()) {
+                                if (entity.getUUID().equals(this.entityUuid)) {
+                                    audioLocations.add(new DisxAudioLocation(
+                                            new BlockPos(
+                                                    entity.getBlockX(),
+                                                    entity.getBlockY(),
+                                                    entity.getBlockZ()
+                                            ),
+                                            entity.level().dimension().location()
+                                    ));
+                                    break;
+                                }
+                            }
+
+                        } else if (this.motionType.equals(DisxAudioMotionType.INSYNC)) {
+                            audioLocations.addAll(
+                                    DisxAudioInstanceRegistry.FrequencyRegistry.getLocationOnFrequency(this.frequencyStack)
+                            );
+
+                        } else if (this.motionType.equals(DisxAudioMotionType.STATIC)) {
+                            audioLocations.add(new DisxAudioLocation(this.blockPos, this.dimension));
+                        }
+                        if (!audioLocations.isEmpty()) {
+
+                            Vec3 currentpos = Minecraft.getInstance()
+                                    .getCameraEntity()
+                                    .getPosition(0.01f);
+
+                            ResourceLocation currentDimension = clientLevel.dimension().location();
+
+                            double maxDistance = (double) DisxConfigRecordS2C.getAudioRadius();
+
+                            double closestDistance = Double.MAX_VALUE;
+
+                            for (DisxAudioLocation audioLocation : audioLocations) {
+                                if (!audioLocation.resourceLocation().equals(currentDimension)) {
+                                    continue;
+                                }
+
+                                BlockPos blockPos = audioLocation.blockPos();
+
+                                Vec3 blockPosVec = new Vec3(
+                                        blockPos.getX() + 0.5,
+                                        blockPos.getY() + 0.5,
+                                        blockPos.getZ() + 0.5
+                                );
+
+                                double distance = currentpos.distanceTo(blockPosVec);
+
+                                if (distance < closestDistance) {
+                                    closestDistance = distance;
+                                }
+                            }
+
+                            double plrVolumeConfig_RECORDS = Minecraft.getInstance()
+                                    .options.getSoundSourceOptionInstance(SoundSource.RECORDS).get();
+
+                            double plrVolumeConfig_MASTER = Minecraft.getInstance()
+                                    .options.getSoundSourceOptionInstance(SoundSource.MASTER).get();
+
+                            double volumeCalc = Math.max(0.0f, 1.0f - (closestDistance / maxDistance));
+
+                            volumeCalc *= (plrVolumeConfig_MASTER * plrVolumeConfig_RECORDS);
+                            volumeCalc *= ((double) this.preferredVolume / 100);
+
+                            float volumeCalc_line = 20.0f * (float) Math.log10(Math.max(0.01f, volumeCalc));
+
+                            if (closestDistance >= maxDistance || preferredVolume == 0) {
+                                volumeCalc_line = -80f;
+                            }
+
+                            if (volumeCalc_line < -80f) {
+                                volumeCalc_line = -80f;
+                            }
+
+                            if (volumeCalc_line > 6.0206) {
+                                volumeCalc_line = 6.0206f;
+                            }
+
+                            if (volumeControl != null) {
+                                volumeControl.setValue(volumeCalc_line);
+                            }
+
+                            if (volumeCalc_line <= -80f) {
+                                playerCanHear = false;
+                            } else {
+                                playerCanHear = true;
+                            }
+
+                            if (plrVolumeConfig_RECORDS != 0.0 &&
+                                    volumeCalc_line > -80f &&
+                                    plrVolumeConfig_MASTER != 0.0 &&
+                                    playerCanHear) {
+
+                                try {
+                                    MusicManager musicManager = Minecraft.getInstance().getMusicManager();
+                                    Minecraft.getInstance().getMusicManager().tick();
+                                    musicManager.stopPlaying();
+
+                                } catch (NullPointerException e) {
+                                    DisxLogger.error(
+                                            "Audio Instance at " + audioLocations +
+                                                    " was unsuccessful in pausing client music, got NullPointerException:" + e
+                                    );
+                                }
+                            }
+
+                        } else {
+                            if (volumeControl != null) {
+                                volumeControl.setValue(-80f);
+                            }
+
+                            playerCanHear = false;
+                        }
                     }
-
                 }
-
             }
-
         }
     }
 
@@ -323,4 +382,8 @@ public class DisxAudioInstance {
     }
 
     public int getRogueRadius() {return rogueRadius;}
+
+    public ItemStack getFrequencyStack() {
+        return frequencyStack;
+    }
 }
